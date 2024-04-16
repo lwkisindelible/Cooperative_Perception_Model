@@ -173,7 +173,8 @@ def linset_assign_list(vis,
         if update_mode == 'add':
             vis.add_geometry(lineset_list1[j])
         else:
-            vis.update_geometry(lineset_list1[j])
+            # vis.update_geometry(lineset_list1[j])
+            vis.update_geometry()
 
 
 def lineset_assign(lineset1, lineset2):
@@ -538,7 +539,6 @@ def visualize_sequence_dataloader(dataloader, order, color_mode='constant'):
     vis_aabbs = []
     for _ in range(50):
         vis_aabbs.append(o3d.geometry.LineSet())
-
     while True:
         for i_batch, sample_batched in enumerate(dataloader):
             print(i_batch)
@@ -553,13 +553,13 @@ def visualize_sequence_dataloader(dataloader, order, color_mode='constant'):
                     index = i if i < len(aabbs) else -1
                     vis_aabbs[i] = lineset_assign(vis_aabbs[i], aabbs[index])
                     vis.add_geometry(vis_aabbs[i])
-
-            for i in range(len(vis_aabbs)):
-                index = i if i < len(aabbs) else -1
-                vis_aabbs[i] = lineset_assign(vis_aabbs[i], aabbs[index])
-                vis.update_geometry(vis_aabbs[i])
-
-            vis.update_geometry(pcd)
+            else:
+                for i in range(len(vis_aabbs)):
+                    index = i if i < len(aabbs) else -1
+                    vis_aabbs[i] = lineset_assign(vis_aabbs[i], aabbs[index])
+                    # vis.update_geometry(vis_aabbs[i])
+                    vis.update_geometry()
+            # vis.update_geometry()
             vis.poll_events()
             vis.update_renderer()
             time.sleep(0.001)

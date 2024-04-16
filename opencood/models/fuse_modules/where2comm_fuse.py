@@ -57,11 +57,12 @@ class Communication(nn.Module):
             if self.training:
                 # Official training proxy objective
                 K = int(H * W * random.uniform(0, 1))
-                communication_maps = communication_maps.reshape(L, H * W)
+                communication_maps = communication_maps.reshape(L, H * W)  # 为什么要选k个？
                 _, indices = torch.topk(communication_maps, k=K, sorted=False)
                 communication_mask = torch.zeros_like(communication_maps).to(communication_maps.device)
                 ones_fill = torch.ones(L, K, dtype=communication_maps.dtype, device=communication_maps.device)
                 communication_mask = torch.scatter(communication_mask, -1, indices, ones_fill).reshape(L, 1, H, W)
+                # torch.scatter(input, dim, index, src),将src中的数据根据index中的索引按照dim的方向填入到input中
             elif self.threshold:
                 ones_mask = torch.ones_like(communication_maps).to(communication_maps.device)
                 zeros_mask = torch.zeros_like(communication_maps).to(communication_maps.device)
@@ -157,7 +158,7 @@ class Where2comm(nn.Module):
                         if x.shape[-1] != communication_masks.shape[-1]:
                             communication_masks = F.interpolate(communication_masks, size=(x.shape[-2], x.shape[-1]),
                                                                 mode='bilinear', align_corners=False)
-                        x = x * communication_masks
+                        x = x * communication_masks  # 这一步已经完成了 Z = M * F 这个公式了
 
                 # 2. Split the features
                 # split_x: [(L1, C, H, W), (L2, C, H, W), ...]
@@ -203,6 +204,8 @@ class Where2comm(nn.Module):
             x_fuse = []
             for b in range(B):
                 neighbor_feature = batch_node_features[b]
-                x_fuse.append(self.fuse_modules(neighbor_feature))
+                x_fuse.append(self.fuse_modules(neighbor_feature))  # 利用注意力融合周围特征，
             x_fuse = torch.stack(x_fuse)
         return x_fuse, communication_rates
+
+

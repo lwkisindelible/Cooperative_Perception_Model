@@ -5,7 +5,7 @@ validate_dir: 'opv2v_data_dumping/validate'
 yaml_parser: "load_point_pillar_params"
 train_params:
   batch_size: &batch_size 2
-  epoches: 15
+  epoches: 2
   eval_freq: 1
   save_freq: 1
   max_cav: &max_cav 5

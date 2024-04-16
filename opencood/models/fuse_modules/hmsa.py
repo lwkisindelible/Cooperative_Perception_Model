@@ -21,7 +21,7 @@ class HGTCavAttention(nn.Module):
         self.v_linears = nn.ModuleList()
         self.a_linears = nn.ModuleList()
         self.norms = nn.ModuleList()
-        for t in range(num_types):
+        for t in range(num_types):  # 不同的type用不同的kqv，提取不同的特征？
             self.k_linears.append(nn.Linear(dim, inner_dim))
             self.q_linears.append(nn.Linear(dim, inner_dim))
             self.v_linears.append(nn.Linear(dim, inner_dim))
@@ -149,3 +149,7 @@ class HGTCavAttention(nn.Module):
         # (B L H W C)
         out = out.permute(0, 3, 1, 2, 4)
         return out
+
+if __name__ == '__main__':
+    a = torch.Tensor(2,2,3,4)
+    print(a)

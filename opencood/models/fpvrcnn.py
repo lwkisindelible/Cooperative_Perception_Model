@@ -76,6 +76,4 @@ class FPVRCNN(nn.Module):
         return batch_dict
 
 
-if __name__ == "__main__":
-    model = SSFA(None)
-    print(model)
+

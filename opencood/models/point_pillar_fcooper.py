@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Author: Runsheng Xu <rxx3386@ucla.edu>
 # License: TDG-Attribution-NonCommercial-NoDistrib
-
+import pprint
 
 import torch.nn as nn
 
@@ -19,9 +19,10 @@ class PointPillarFCooper(nn.Module):
     """
     def __init__(self, args):
         super(PointPillarFCooper, self).__init__()
-
+        print("args: ")
+        pprint.pprint(args)
         self.max_cav = args['max_cav']
-        # PIllar VFE
+        # PIllar VFE Voxel Feature Encoding
         self.pillar_vfe = PillarVFE(args['pillar_vfe'],
                                     num_point_features=4,
                                     voxel_size=args['voxel_size'],
@@ -75,15 +76,17 @@ class PointPillarFCooper(nn.Module):
             p.requires_grad = False
 
     def forward(self, data_dict):
+        print("data_dict: ")
+        pprint.pprint(data_dict)
         voxel_features = data_dict['processed_lidar']['voxel_features']
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
         record_len = data_dict['record_len']
-
         batch_dict = {'voxel_features': voxel_features,
                       'voxel_coords': voxel_coords,
                       'voxel_num_points': voxel_num_points,
                       'record_len': record_len}
+        pprint.pprint(batch_dict)
         # n, 4 -> n, c
         batch_dict = self.pillar_vfe(batch_dict)
         # n, c -> N, C, H, W

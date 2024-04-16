@@ -16,20 +16,20 @@ class STTF(nn.Module):
 
     def forward(self, x, mask, spatial_correction_matrix):
         x = x.permute(0, 1, 4, 2, 3)
-        dist_correction_matrix = get_discretized_transformation_matrix(
+        dist_correction_matrix = get_discretized_transformation_matrix(  # 获取离散化变换矩阵
             spatial_correction_matrix, self.discrete_ratio,
             self.downsample_rate)
         # Only compensate non-ego vehicles
         B, L, C, H, W = x.shape
 
-        T = get_transformation_matrix(
+        T = get_transformation_matrix(  #x就是整体数据，下面1：其实就是表示其他车辆，0就是自己车辆
             dist_correction_matrix[:, 1:, :, :].reshape(-1, 2, 3), (H, W))
         cav_features = warp_affine(x[:, 1:, :, :, :].reshape(-1, C, H, W), T,
                                    (H, W))
         cav_features = cav_features.reshape(B, -1, C, H, W)
         x = torch.cat([x[:, 0, :, :, :].unsqueeze(1), cav_features], dim=1)
         x = x.permute(0, 1, 3, 4, 2)
-        return x
+        return x  # 返回的是自己提取的特征和已经接受到的其他车辆的特征。
 
 
 class RelTemporalEncoding(nn.Module):
@@ -58,7 +58,7 @@ class RelTemporalEncoding(nn.Module):
         return x + self.lin(self.emb(t * self.RTE_ratio)).unsqueeze(
             0).unsqueeze(1)
 
-
+# Delay-aware positional encoding
 class RTE(nn.Module):
     def __init__(self, dim, RTE_ratio=2):
         super(RTE, self).__init__()

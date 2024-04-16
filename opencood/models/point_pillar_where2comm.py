@@ -1,11 +1,13 @@
 import torch.nn as nn
 
+from opencood.hypes_yaml import yaml_utils
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 from opencood.models.fuse_modules.where2comm_fuse import Where2comm
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
+from opencood.tools.train import train_parser
 
 
 class PointPillarWhere2comm(nn.Module):
@@ -91,7 +93,7 @@ class PointPillarWhere2comm(nn.Module):
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
 
-        psm_single = self.cls_head(spatial_features_2d)
+        psm_single = self.cls_head(spatial_features_2d) # C
 
         # Compressor
         if self.compression:
@@ -118,3 +120,4 @@ class PointPillarWhere2comm(nn.Module):
 
         output_dict = {'psm': psm, 'rm': rm, 'com': communication_rates}
         return output_dict
+

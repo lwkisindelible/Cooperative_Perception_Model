@@ -18,6 +18,8 @@ from opencood.tools import multi_gpu_utils
 from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
 
+import pprint
+
 
 def train_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
@@ -35,6 +37,7 @@ def train_parser():
 
 def main():
     opt = train_parser()
+    print(opt.hypes_yaml)
     hypes = yaml_utils.load_yaml(opt.hypes_yaml, opt)
 
     multi_gpu_utils.init_distributed_mode(opt)
@@ -42,7 +45,8 @@ def main():
     print('-----------------Dataset Building------------------')
     opencood_train_dataset = build_dataset(hypes, visualize=False, train=True)
     opencood_validate_dataset = build_dataset(hypes, visualize=False, train=False)
-
+    print("data: ")
+    pprint.pprint(opencood_train_dataset)
     if opt.distributed:
         sampler_train = DistributedSampler(opencood_train_dataset)
         sampler_val = DistributedSampler(opencood_validate_dataset,
@@ -53,24 +57,24 @@ def main():
 
         train_loader = DataLoader(opencood_train_dataset,
                                   batch_sampler=batch_sampler_train,
-                                  num_workers=8,
+                                  num_workers=0,
                                   collate_fn=opencood_train_dataset.collate_batch_train)
         val_loader = DataLoader(opencood_validate_dataset,
                                 sampler=sampler_val,
-                                num_workers=8,
+                                num_workers=0,
                                 collate_fn=opencood_train_dataset.collate_batch_train,
                                 drop_last=False)
     else:
         train_loader = DataLoader(opencood_train_dataset,
                                   batch_size=hypes['train_params']['batch_size'],
-                                  num_workers=8,
+                                  num_workers=0,
                                   collate_fn=opencood_train_dataset.collate_batch_train,
-                                  shuffle=True,
+                                  shuffle=False,
                                   pin_memory=False,
                                   drop_last=True)
         val_loader = DataLoader(opencood_validate_dataset,
                                 batch_size=hypes['train_params']['batch_size'],
-                                num_workers=8,
+                                num_workers=0,
                                 collate_fn=opencood_train_dataset.collate_batch_train,
                                 shuffle=False,
                                 pin_memory=False,
@@ -78,6 +82,14 @@ def main():
 
     print('---------------Creating Model------------------')
     model = train_utils.create_model(hypes)
+    # for i, batch_data in enumerate(train_loader):
+    #     # the model will be evaluation mode during validation
+    #     model.train()
+    #     print("batch_data: ")
+    #     pprint.pprint(batch_data)
+    #     break
+    # exit()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # if we want to train from last checkpoint.
@@ -93,10 +105,13 @@ def main():
         saved_path = train_utils.setup_train(hypes)
 
     # we assume gpu is necessary
+    print("torch.cuda.is_available(): ", torch.cuda.is_available())
+    print("torch.cuda.device_count(): ", torch.cuda.device_count())
     if torch.cuda.is_available():
         model.to(device)
     model_without_ddp = model
 
+    print("opt.distributed: ", opt.distributed)
     if opt.distributed:
         model = \
             torch.nn.parallel.DistributedDataParallel(model,
@@ -117,6 +132,7 @@ def main():
     writer = SummaryWriter(saved_path)
 
     # half precision training
+    print("opt.half: ", opt.half)
     if opt.half:
         scaler = torch.cuda.amp.GradScaler()
 
@@ -163,7 +179,6 @@ def main():
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
 
-
             criterion.logging(epoch, i, len(train_loader), writer, pbar=pbar2)
             pbar2.update(1)
 
@@ -180,7 +195,7 @@ def main():
 
         if epoch % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
-                os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
+                       os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
 
         if epoch % hypes['train_params']['eval_freq'] == 0:
             valid_ave_loss = []

@@ -61,8 +61,8 @@ class BaseWindowAttention(nn.Module):
                             q, k, ) * self.scale
         # consider prior knowledge of the local window
         if self.relative_pos_embedding:
-            dots += self.pos_embedding[self.relative_indices[:, :, 0],
-                                       self.relative_indices[:, :, 1]]
+            dots += self.pos_embedding[self.relative_indices[:, :, 0].long(),
+                                       self.relative_indices[:, :, 1].long()]
         else:
             dots += self.pos_embedding
 

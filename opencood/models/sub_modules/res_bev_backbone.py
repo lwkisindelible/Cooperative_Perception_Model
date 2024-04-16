@@ -1,8 +1,8 @@
-
 import numpy as np
 import torch
 import torch.nn as nn
 from opencood.models.sub_modules.resblock import ResNetLayers
+
 
 class ResBEVBackbone(nn.Module):
     def __init__(self, model_cfg, input_channels=64):
@@ -32,9 +32,9 @@ class ResBEVBackbone(nn.Module):
             upsample_strides = num_upsample_filters = []
 
         self.resnet = ResNetLayers(layer_nums,
-                                     layer_strides,
-                                     num_filters,
-                                     inplanes = input_channels)
+                                   layer_strides,
+                                   num_filters,
+                                   inplanes=input_channels)
 
         num_levels = len(layer_nums)
         self.num_levels = len(layer_nums)
@@ -107,7 +107,6 @@ class ResBEVBackbone(nn.Module):
         data_dict['spatial_features_2d'] = x
         return data_dict
 
-
     def get_multiscale_feature(self, spatial_features):
         """
         before multiscale intermediate fusion
@@ -133,10 +132,9 @@ class ResBEVBackbone(nn.Module):
         if len(self.deblocks) > self.num_levels:
             x = self.deblocks[-1](x)
         return x
-        
+
     def get_layer_i_feature(self, spatial_features, layer_i):
         """
         before multiscale intermediate fusion
         """
         return eval(f"self.resnet.layer{layer_i}")(spatial_features)  # tuple of features
-    

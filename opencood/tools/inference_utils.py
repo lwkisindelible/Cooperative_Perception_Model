@@ -60,8 +60,9 @@ def inference_early_fusion(batch_data, model, dataset):
     """
     output_dict = OrderedDict()
     cav_content = batch_data['ego']
-
+    # print("cav_content: ", cav_content.keys())
     output_dict['ego'] = model(cav_content)
+    # output_dict['ego'] = model
 
     pred_box_tensor, pred_score, gt_box_tensor = \
         dataset.post_process(batch_data,

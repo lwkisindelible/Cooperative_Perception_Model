@@ -22,10 +22,11 @@ class SpVoxelPreprocessor(BasePreprocessor):
         try:
             # spconv v1.x
             from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
-        except:
+        except Exception:
             # spconv v2.x
             from spconv.utils import Point2VoxelCPU3d as VoxelGenerator
-            self.spconv = 2
+        self.spconv = 2
+
         self.lidar_range = self.params['cav_lidar_range']
         self.voxel_size = self.params['args']['voxel_size']
         self.max_points_per_voxel = self.params['args']['max_points_per_voxel']

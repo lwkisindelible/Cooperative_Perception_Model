@@ -44,7 +44,7 @@ def test_parser():
     opt = parser.parse_args()
     return opt
 
-
+#  python opencood/tools/inference.py --model_dir opencood/saved_model/v2x-vit --fusion_method intermediate --show_sequence
 def main():
     opt = test_parser()
     assert opt.fusion_method in ['late', 'early', 'intermediate']
@@ -59,7 +59,7 @@ def main():
     print(f"{len(opencood_dataset)} samples found.")
     data_loader = DataLoader(opencood_dataset,
                              batch_size=1,
-                             num_workers=16,
+                             num_workers=0, # 16
                              collate_fn=opencood_dataset.collate_batch_test,
                              shuffle=False,
                              pin_memory=False,
@@ -76,7 +76,7 @@ def main():
     saved_path = opt.model_dir
     _, model = train_utils.load_saved_model(saved_path, model)
     model.eval()
-
+    # print(model)
     # Create the dictionary for evaluation.
     # also store the confidence score for each prediction
     result_stat = {0.3: {'tp': [], 'fp': [], 'gt': 0, 'score': []},                
@@ -192,7 +192,8 @@ def main():
                 vis_utils.linset_assign_list(vis,
                                              vis_aabbs_gt,
                                              gt_o3d_box)
-                vis.update_geometry(pcd)
+                # vis.update_geometry(pcd)
+                vis.update_geometry()
                 vis.poll_events()
                 vis.update_renderer()
                 time.sleep(0.001)

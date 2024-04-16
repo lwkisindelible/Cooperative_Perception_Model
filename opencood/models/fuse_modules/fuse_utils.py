@@ -40,6 +40,7 @@ def regroup(dense_feature, record_len, max_len):
 
         # the maximum M is 5 as most 5 cavs
         padding_len = max_len - feature_shape[0]
+        # padding 是每个样本中填充的数据， mask用来标记哪些是填充的，哪些是真实的。
         mask.append([1] * feature_shape[0] + [0] * padding_len)
 
         padding_tensor = torch.zeros(padding_len, feature_shape[1],
@@ -47,7 +48,7 @@ def regroup(dense_feature, record_len, max_len):
         padding_tensor = padding_tensor.to(split_feature.device)
 
         split_feature = torch.cat([split_feature, padding_tensor],
-                                  dim=0)
+                                  dim=0) # 保证维度一样！！！！
 
         # 1, 5C, H, W
         split_feature = split_feature.view(-1,

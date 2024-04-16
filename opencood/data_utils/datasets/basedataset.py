@@ -8,6 +8,7 @@ Basedataset class for all kinds of fusion.
 
 import os
 import math
+import pprint
 from collections import OrderedDict
 
 import torch
@@ -109,7 +110,7 @@ class BaseDataset(Dataset):
         else:
             root_dir = params['validate_dir']
 
-        if 'train_params' not in params or\
+        if 'train_params' not in params or \
                 'max_cav' not in params['train_params']:
             self.max_cav = 7
         else:
@@ -117,8 +118,9 @@ class BaseDataset(Dataset):
 
         # first load all paths of different scenarios
         scenario_folders = sorted([os.path.join(root_dir, x)
-                                   for x in os.listdir(root_dir) if
+                                   for x in os.listdir(path=root_dir) if
                                    os.path.isdir(os.path.join(root_dir, x))])
+        print("scenario_folders: ", scenario_folders)  # test
         # Structure: {scenario_id : {cav_1 : {timestamp1 : {yaml: path,
         # lidar: path, cameras:list of path}}}}
         self.scenario_database = OrderedDict()
@@ -132,6 +134,7 @@ class BaseDataset(Dataset):
             cav_list = sorted([x for x in os.listdir(scenario_folder)
                                if os.path.isdir(
                     os.path.join(scenario_folder, x))])
+            print("cav_list: ", cav_list)
             assert len(cav_list) > 0
 
             # roadside unit data's id is always negative, so here we want to
@@ -149,20 +152,22 @@ class BaseDataset(Dataset):
 
                 # save all yaml files to the dictionary
                 cav_path = os.path.join(scenario_folder, cav_id)
-
+                print("cav_path: ", cav_path)
                 # use the frame number as key, the full path as the values
                 yaml_files = \
                     sorted([os.path.join(cav_path, x)
                             for x in os.listdir(cav_path) if
                             x.endswith('.yaml') and 'additional' not in x])
                 timestamps = self.extract_timestamps(yaml_files)
-
+                print("yaml_files: ", yaml_files[0])
+                print("timestamps: ", timestamps[0])
                 for timestamp in timestamps:
                     self.scenario_database[i][cav_id][timestamp] = \
                         OrderedDict()
 
                     yaml_file = os.path.join(cav_path,
                                              timestamp + '.yaml')
+
                     lidar_file = os.path.join(cav_path,
                                               timestamp + '.pcd')
                     camera_files = self.load_camera_files(cav_path, timestamp)
@@ -280,7 +285,7 @@ class BaseDataset(Dataset):
         timestamps = []
 
         for file in yaml_files:
-            res = file.split('/')[-1]
+            res = file.split('\\')[-1]
 
             timestamp = res.replace('.yaml', '')
             timestamps.append(timestamp)
@@ -308,6 +313,7 @@ class BaseDataset(Dataset):
         """
         # get all timestamp keys
         timestamp_keys = list(scenario_database.items())[0][1]
+        # pprint.pprint(timestamp_keys)
         # retrieve the correct index
         timestamp_key = list(timestamp_keys.items())[timestamp_index][0]
 
@@ -320,6 +326,7 @@ class BaseDataset(Dataset):
         ego_lidar_pose = None
         ego_cav_content = None
         # Find ego pose first
+        print("timestamp_key: ", timestamp_key)
         for cav_id, cav_content in scenario_database.items():
             if cav_content['ego']:
                 ego_cav_content = cav_content
@@ -331,6 +338,8 @@ class BaseDataset(Dataset):
 
         # calculate the distance
         for cav_id, cav_content in scenario_database.items():
+            # print("id: ", cav_id)
+            # pprint.pprint(cav_content[timestamp_key])
             cur_lidar_pose = \
                 load_yaml(cav_content[timestamp_key]['yaml'])['lidar_pose']
             distance = \

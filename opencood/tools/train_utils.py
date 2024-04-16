@@ -13,7 +13,9 @@ from datetime import datetime
 
 import torch
 import torch.optim as optim
-import timm
+
+import pprint
+# import timm
 
 def load_saved_model(saved_path, model):
     """
@@ -48,11 +50,12 @@ def load_saved_model(saved_path, model):
         return initial_epoch_
 
     initial_epoch = findLastCheckpoint(saved_path)
+    print("initial_epoch: ", initial_epoch)
     if initial_epoch > 0:
         model_file = os.path.join(saved_path,
-                         'net_epoch%d.pth' % initial_epoch) \
+                                  'net_epoch%d.pth' % initial_epoch) \
             if initial_epoch != 10000 else os.path.join(saved_path,
-                         'latest.pth')
+                                                        'latest.pth')
         print('resuming by loading epoch %d' % initial_epoch)
         checkpoint = torch.load(
             model_file,
@@ -98,7 +101,6 @@ def setup_train(hypes):
     return full_path
 
 
-
 def create_model(hypes):
     """
     Import the module "models/[model_name].py
@@ -113,6 +115,8 @@ def create_model(hypes):
     model : opencood,object
         Model object.
     """
+    print("hypes['model']['args']: ")
+    pprint.pprint(hypes['model']['args'])
     backbone_name = hypes['model']['core_method']
     backbone_config = hypes['model']['args']
 
@@ -132,6 +136,8 @@ def create_model(hypes):
                                                        target_model_name))
         exit(0)
     instance = model(backbone_config)
+    print("instance: ")
+    pprint.pprint(instance)
     return instance
 
 
