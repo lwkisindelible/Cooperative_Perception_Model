@@ -6,6 +6,7 @@
 import torch
 import torch.nn as nn
 
+from opencood.models.fuse_modules.fuse_utils import regroup
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
@@ -111,8 +112,12 @@ class PointPillarMymodel(nn.Module):
         # psm_single = self.cls_head(spatial_features_2d)  # request map
         psm_single = self.deform_head(spatial_features_2d)
 
+        regroup_feature, mask = regroup(spatial_features_2d,
+                                        record_len,
+                                        self.max_cav)
+
         ## TODO: 你的模块在forward函数中的代码
-        fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
+        fused_feature, communication_rates = self.fusion_net(regroup_feature, mask,
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix)

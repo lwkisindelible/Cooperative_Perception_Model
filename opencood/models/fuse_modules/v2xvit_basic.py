@@ -166,6 +166,7 @@ class V2XTEncoder(nn.Module):
             dt = prior_encoding[:, :, 0, 0, 1].to(torch.int)
             x = self.rte(x, dt)
         x = self.sttf(x, mask, spatial_correction_matrix)
+        # mask(B,L) --> (B,H,W,1,L)
         com_mask = mask.unsqueeze(1).unsqueeze(2).unsqueeze(
             3) if not self.use_roi_mask else get_roi_and_cav_mask(x.shape,
                                                                   mask,

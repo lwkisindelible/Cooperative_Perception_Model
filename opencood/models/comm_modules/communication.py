@@ -81,7 +81,7 @@ class STTF(nn.Module):
         self.discrete_ratio = args['voxel_size'][0]
         self.downsample_rate = args['downsample_rate']
 
-    def forward(self, x, mask, spatial_correction_matrix):
+    def forward(self, x, spatial_correction_matrix):
         x = x.permute(0, 1, 4, 2, 3)
         dist_correction_matrix = get_discretized_transformation_matrix(  # 获取离散化变换矩阵
             spatial_correction_matrix, self.discrete_ratio,
