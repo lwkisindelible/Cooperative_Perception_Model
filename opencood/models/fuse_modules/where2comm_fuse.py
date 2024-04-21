@@ -39,14 +39,15 @@ class Communication(nn.Module):
     def forward(self, batch_confidence_maps, B):
         """
         Args:
-            batch_confidence_maps: [(L1, H, W), (L2, H, W), ...]
+            batch_confidence_maps: (K,L,2,H,W)
         """
-
+        # (K,L,2,H,W)  所以下面要[0]
         _, _, H, W = batch_confidence_maps[0].shape
 
         communication_masks = []
         communication_rates = []
         for b in range(B):
+            # ori_maps: (L,1,H,W) 相当于在2个anchor里面选一个sigmoid值大的
             ori_communication_maps, _ = batch_confidence_maps[b].sigmoid().max(dim=1, keepdim=True)
             if self.smooth:
                 communication_maps = self.gaussian_filter(ori_communication_maps)
@@ -152,7 +153,7 @@ class Where2comm(nn.Module):
                     if self.fully:
                         communication_rates = torch.tensor(1).to(x.device)
                     else:
-                        # Prune
+                        # Prune (N,2,H,W) -> (K,L,2,H,W)
                         batch_confidence_maps = self.regroup(psm_single, record_len)
                         communication_masks, communication_rates = self.naive_communication(batch_confidence_maps, B)
                         if x.shape[-1] != communication_masks.shape[-1]:
@@ -203,9 +204,18 @@ class Where2comm(nn.Module):
             # 3. Fusion
             x_fuse = []
             for b in range(B):
-                neighbor_feature = batch_node_features[b]
+                neighbor_feature = batch_node_features[b] #(L,C,H,W)
                 x_fuse.append(self.fuse_modules(neighbor_feature))  # 利用注意力融合周围特征，
             x_fuse = torch.stack(x_fuse)
         return x_fuse, communication_rates
 
 
+
+if __name__ == '__main__':
+    L = 2
+    H = 3
+    W = 4
+    batch_confidence_maps = torch.randn(L,2,H,W)
+    print(batch_confidence_maps.sigmoid())
+    ori,_ = batch_confidence_maps.sigmoid().max(dim=1, keepdim=True)
+    print(ori) # (L,1,H,W)

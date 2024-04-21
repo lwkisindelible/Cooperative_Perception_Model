@@ -1,11 +1,11 @@
 name: point_pillar_where2comm
-root_dir: 'opv2v_data_dumping/train'
-validate_dir: 'opv2v_data_dumping/validate'
+root_dir: 'v2xset/train'
+validate_dir: 'v2xset/validate'
 
 
 wild_setting:
   seed: 20
-  async: False
+  async: True
   async_mode: 'sim'
   async_overhead: 100
   loc_err: False

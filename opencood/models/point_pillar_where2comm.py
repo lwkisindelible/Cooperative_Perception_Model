@@ -92,7 +92,7 @@ class PointPillarWhere2comm(nn.Module):
         # Down-sample feature to reduce memory
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
-
+        # N, 2, H, W 因为这个输出的channel为anchor number:也就是2
         psm_single = self.cls_head(spatial_features_2d) # C
 
         # Compressor
