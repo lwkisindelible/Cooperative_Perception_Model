@@ -14,18 +14,6 @@ wild_setting: # setting related to noise
   transmission_speed: 27
   xyz_std: 0.2
 
-#async: whether add communication delay.
-#aysnc_mode: sim or real mode. In sim mode, the delay is a constant while in real mode, the delay has a uniform distribution. The major experiment in the paper used sim mode whereas the ‘Effects of transmission size’ study used real mode.
-#async_overhead: the communication delay in ms. In sim mode, it represents a constant number. In real mode, the systematic async will be a random number from 0 to aysnc_overhead.
-#backbone_delay: an estimate of backbone computation time. Only useful in real mode.
-#data_size: transmission data size in Mb. Only used in real mode.
-#transmission_speed: data transmitting speed during communication. By default 27 Mb/s. Only used in real mode.
-#loc_err: whether to add localization error.
-#xyz_std: the standard deviation of positional GPS error.
-#ryp_std: the standard deviation of angular GPS error.
-#seed: random seed for noise simulation. please keep it as 25 during testing
-
-
 yaml_parser: "load_point_pillar_params"
 train_params:
   batch_size: &batch_size 4
@@ -90,7 +78,20 @@ model:
     max_cav: *max_cav
     compression: 0 # compression rate
     backbone_fix: false
-
+    head_dim: 256
+    base_bev_backbone:
+      layer_nums: [ 3, 5, 8 ]
+      layer_strides: [ 2, 2, 2 ]
+      num_filters: [ 64, 128, 256 ]
+      upsample_strides: [ 1, 2, 4 ]
+      num_upsample_filter: [ 128, 128, 128 ]
+      resnet: true
+    shrink_header:
+      kernal_size: [ 3 ]
+      stride: [ 2 ]
+      padding: [ 1 ]
+      dim: [ 256 ]
+      input_dim: 384 # 128 * 3
     pillar_vfe:
       use_norm: true
       with_distance: false
@@ -98,22 +99,53 @@ model:
       num_filters: [64]
     point_pillar_scatter:
       num_features: 64
-    # ...搭建自己的模型
     myfusion:
-
-
-    base_bev_backbone:
-      layer_nums: [ 3, 5, 8 ]
-      layer_strides: [ 2, 2, 2 ]
-      num_filters: [ 64, 128, 256 ]
-      upsample_strides: [ 1, 2, 4 ]
-      num_upsample_filter: [ 128, 128, 128 ]
-    shrink_header:
-      kernal_size: [ 3 ]
-      stride: [ 2 ]
-      padding: [ 1 ]
-      dim: [ 256 ]
-      input_dim: 384 # 128 * 3
+      # number of fusion blocks per encoder layer
+      num_blocks: 1
+      # number of encoder layers
+      depth: 3
+      use_roi_mask: true
+      use_RTE: &use_RTE true
+      RTE_ratio: &RTE_ratio 2 # 2 means the dt has 100ms interval while 1 means 50 ms interval
+      # agent-wise attention
+      cav_att_config: &cav_att_config
+        dim: 256
+        use_hetero: true
+        use_RTE: *use_RTE
+        RTE_ratio: *RTE_ratio
+        heads: 8
+        dim_head: 32
+        dropout: 0.3
+      # spatial-wise attention
+      pwindow_config: &pwindow_config
+        dim: 256
+        heads: [ 16, 8, 4 ]
+        dim_head: [ 16, 32, 64 ]
+        dropout: 0.3
+        window_size: [ 4, 8, 16 ]
+        relative_pos_embedding: true
+        fusion_method: 'split_attn'
+      # feedforward condition
+      feed_forward: &feed_forward
+        mlp_dim: 256
+        dropout: 0.3
+      sttf: &sttf
+        voxel_size: *voxel_size
+        downsample_rate: 4
+      myfusion:
+#        fully: False
+#        voxel_size: *voxel_size
+#        downsample_rate: 4
+#        in_channels: 256
+#        multi_scale: True
+#        layer_nums: *layer_nums
+#        num_filters: *num_filters
+        communication:
+          round: 1
+          threshold: 0.01
+          gaussian_smooth:
+            k_size: 5
+            c_sigma: 1.0
 
 loss:
   core_method: point_pillar_loss
