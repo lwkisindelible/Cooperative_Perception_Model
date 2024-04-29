@@ -13,17 +13,6 @@ wild_setting: # setting related to noise
   xyz_std: 0.2
   seed: 25
   transmission_speed: 27
-#async: whether add communication delay.
-#aysnc_mode: sim or real mode. In sim mode, the delay is a constant while in real mode, the delay has a uniform distribution. The major experiment in the paper used sim mode whereas the ‘Effects of transmission size’ study used real mode.
-#async_overhead: the communication delay in ms. In sim mode, it represents a constant number. In real mode, the systematic async will be a random number from 0 to aysnc_overhead.
-#backbone_delay: an estimate of backbone computation time. Only useful in real mode.
-#data_size: transmission data size in Mb. Only used in real mode.
-#transmission_speed: data transmitting speed during communication. By default 27 Mb/s. Only used in real mode.
-#loc_err: whether to add localization error.
-#xyz_std: the standard deviation of positional GPS error.
-#ryp_std: the standard deviation of angular GPS error.
-#seed: random seed for noise simulation. please keep it as 25 during testing
-
 
 yaml_parser: "load_point_pillar_params"
 train_params:
