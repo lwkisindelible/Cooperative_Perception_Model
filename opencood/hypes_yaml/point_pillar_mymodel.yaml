@@ -1,19 +1,18 @@
 name: point_pillar_mymodel
-root_dir: 'opv2v_data_dumping/train'
-validate_dir: 'opv2v_data_dumping/validate'
+root_dir: 'v2xset/train'
+validate_dir: 'v2xset/validate'
 
 wild_setting: # setting related to noise
-  async: False
+  async: true
   async_mode: 'sim'
   async_overhead: 100
   backbone_delay: 10
   data_size: 1.06
   loc_err: False
   ryp_std: 0.2
+  xyz_std: 0.2
   seed: 25
   transmission_speed: 27
-  xyz_std: 0.2
-
 #async: whether add communication delay.
 #aysnc_mode: sim or real mode. In sim mode, the delay is a constant while in real mode, the delay has a uniform distribution. The major experiment in the paper used sim mode whereas the ‘Effects of transmission size’ study used real mode.
 #async_overhead: the communication delay in ms. In sim mode, it represents a constant number. In real mode, the systematic async will be a random number from 0 to aysnc_overhead.
@@ -28,7 +27,7 @@ wild_setting: # setting related to noise
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 4
+  batch_size: &batch_size 2
   epoches: 60
   eval_freq: 1
   save_freq: 1
@@ -37,7 +36,7 @@ train_params:
 fusion:
   core_method: 'IntermediateFusionDataset' # LateFusionDataset, EarlyFusionDataset, IntermediateFusionDataset supported
   args:
-    proj_first: true
+    cur_ego_pose_flag: False
 
 # preprocess-related
 preprocess:
@@ -49,7 +48,7 @@ preprocess:
     max_voxel_train: 32000
     max_voxel_test: 70000
   # lidar range for each individual cav.
-  cav_lidar_range: &cav_lidar [-140.8, -40, -3, 140.8, 40, 1]
+  cav_lidar_range: &cav_lidar [-140.8, -38.4, -3, 140.8, 38.4, 1]
 
 data_augment:
   - NAME: random_world_flip
@@ -75,7 +74,7 @@ postprocess:
   target_args:
     pos_threshold: 0.6
     neg_threshold: 0.45
-    score_threshold: 0.20
+    score_threshold: 0.27
   order: 'hwl' # hwl or lwh
   max_num: 100 # maximum number of objects in a single frame. use this number to make sure different frames has the same dimension in the same batch
   nms_thresh: 0.15
@@ -90,17 +89,15 @@ model:
     max_cav: *max_cav
     compression: 0 # compression rate
     backbone_fix: false
+    head_dim: 256
 
     pillar_vfe:
       use_norm: true
       with_distance: false
       use_absolute_xyz: true
-      num_filters: [64]
+      num_filters: [ 64 ]
     point_pillar_scatter:
       num_features: 64
-    # ...搭建自己的模型
-    myfusion:
-
 
     base_bev_backbone:
       layer_nums: [ 3, 5, 8 ]
@@ -108,12 +105,61 @@ model:
       num_filters: [ 64, 128, 256 ]
       upsample_strides: [ 1, 2, 4 ]
       num_upsample_filter: [ 128, 128, 128 ]
+      resnet: true
     shrink_header:
       kernal_size: [ 3 ]
       stride: [ 2 ]
       padding: [ 1 ]
       dim: [ 256 ]
       input_dim: 384 # 128 * 3
+
+    myfusion:
+      # number of fusion blocks per encoder layer
+      num_blocks: 1
+      # number of encoder layers
+      depth: 3
+      use_roi_mask: true
+      use_RTE: &use_RTE true
+      RTE_ratio: &RTE_ratio 2 # 2 means the dt has 100ms interval while 1 means 50 ms interval
+      # agent-wise attention
+      cav_att_config: &cav_att_config
+        dim: 256
+        use_hetero: true
+        use_RTE: *use_RTE
+        RTE_ratio: *RTE_ratio
+        heads: 8
+        dim_head: 32
+        dropout: 0.3
+      # spatial-wise attention
+      pwindow_config: &pwindow_config
+        dim: 256
+        heads: [ 16, 8, 4 ]
+        dim_head: [ 16, 32, 64 ]
+        dropout: 0.3
+        window_size: [ 4, 8, 16 ]
+        relative_pos_embedding: true
+        fusion_method: 'split_attn'
+      # feedforward condition
+      feed_forward: &feed_forward
+        mlp_dim: 256
+        dropout: 0.3
+      sttf: &sttf
+        voxel_size: *voxel_size
+        downsample_rate: 4
+      myfusion:
+#        fully: False
+#        voxel_size: *voxel_size
+#        downsample_rate: 4
+#        in_channels: 256
+#        multi_scale: True
+#        layer_nums: *layer_nums
+#        num_filters: *num_filters
+        communication:
+          round: 1
+          threshold: 0.01
+          gaussian_smooth:
+            k_size: 5
+            c_sigma: 1.0
 
 loss:
   core_method: point_pillar_loss
@@ -131,4 +177,4 @@ optimizer:
 lr_scheduler:
   core_method: multistep #step, multistep and Exponential support
   gamma: 0.1
-  step_size: [10, 50, 80]
+  step_size: [15, 50]
