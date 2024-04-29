@@ -6,6 +6,7 @@
 import torch
 import torch.nn as nn
 
+from opencood.models.fuse_modules.fuse_utils import regroup
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
@@ -14,6 +15,8 @@ from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
 from opencood.models.fuse_modules.myfusion import MyFusion
 from opencood.models.comm_modules.defomavle_conv import DeformConv2d
+
+# from torchvision.ops import deform_conv2d
 
 
 class PointPillarMymodel(nn.Module):
@@ -42,13 +45,15 @@ class PointPillarMymodel(nn.Module):
             self.naive_compressor = NaiveCompressor(256, args['compression'])
 
         ## TODO: 你自己的融合模块
-        self.fusion_net = MyFusion(args['myfusion'])
-        # self.multi_scale = args['myfusion']['myfusion']['multi_scale']
-        self.deform_head = DeformConv2d(args['head_dim'], args['anchor_number'])
+        self.fusion_net = MyFusion(args['mymodel_fusion'])
 
-        self.cls_head = nn.Conv2d(args['head_dim'], args['anchor_number'],
+        self.multi_scale = args['mymodel_fusion']['multi_scale']
+
+        self.deform_head = DeformConv2d(128 * 3, args['output_dim'])
+
+        self.cls_head = nn.Conv2d(128 * 3, args['anchor_number'],
                                   kernel_size=1)
-        self.reg_head = nn.Conv2d(args['head_dim'], 7 * args['anchor_number'],
+        self.reg_head = nn.Conv2d(128 * 3, 7 * args['anchor_num'],
                                   kernel_size=1)
         if args['backbone_fix']:
             self.backbone_fix()
@@ -84,7 +89,6 @@ class PointPillarMymodel(nn.Module):
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
         pairwise_t_matrix = data_dict['pairwise_t_matrix']
-        spatial_correction_matrix = data_dict['spatial_correction_matrix']
         record_len = data_dict['record_len']
 
         batch_dict = {'voxel_features': voxel_features,
@@ -97,27 +101,26 @@ class PointPillarMymodel(nn.Module):
         batch_dict = self.scatter(batch_dict)
         batch_dict = self.backbone(batch_dict)
         spatial_features_2d = batch_dict['spatial_features_2d']
-        # print("spatial_features_2d.shape: ", spatial_features_2d.shape)
+
         # downsample feature to reduce memory
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
-        psm_single = self.cls_head(spatial_features_2d)  # request map
-        # psm_single = self.deform_head(spatial_features_2d)
         # compressor
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
-            # prior encoding added
-        prior_encoding = \
-            data_dict['prior_encoding'].unsqueeze(-1).unsqueeze(-1)
+
+        # psm_single = self.cls_head(spatial_features_2d)  # request map
+        psm_single = self.deform_head(spatial_features_2d)
+
+        regroup_feature, mask = regroup(spatial_features_2d,
+                                        record_len,
+                                        self.max_cav)
+
         ## TODO: 你的模块在forward函数中的代码
-        fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
-                                                             prior_encoding,
+        fused_feature, communication_rates = self.fusion_net(regroup_feature, mask,
                                                                  psm_single,
                                                                  record_len,
-                                                                 pairwise_t_matrix,
-                                                             spatial_correction_matrix)
-        # b h w c -> b c h w
-        fused_feature = fused_feature.permute(0, 3, 1, 2)
+                                                                 pairwise_t_matrix)
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
 
