@@ -36,12 +36,13 @@ class Communication(nn.Module):
     def forward(self, batch_confidence_maps, B):
         """
         Args:
-            batch_confidence_maps: [(L1, H, W), (L2, H, W), ...]
+            batch_confidence_maps: tuple(torch.size([4, 2, 48, 176]))
         """
         _, _, H, W = batch_confidence_maps[0].shape
         communication_masks = []
         communication_rates = []
         for b in range(B):
+            # ori: torch.Size([4, 1, 48, 176])
             ori_communication_maps, _ = batch_confidence_maps[b].sigmoid().max(dim=1, keepdim=True)
             if self.smooth:
                 communication_maps = self.gaussian_filter(ori_communication_maps)
@@ -61,7 +62,9 @@ class Communication(nn.Module):
             elif self.threshold: # 如果有threshold
                 ones_mask = torch.ones_like(communication_maps).to(communication_maps.device)
                 zeros_mask = torch.zeros_like(communication_maps).to(communication_maps.device)
+                # torch.Size([4, 1, 48, 176])
                 communication_mask = torch.where(communication_maps > self.threshold, ones_mask, zeros_mask)
+                print("sum:", communication_maps.sum())
             else:
                 communication_mask = torch.ones_like(communication_maps).to(communication_maps.device)
 
@@ -227,3 +230,40 @@ class RTE(nn.Module):
                     self.emb(x[b, i, :, :, :], dts[b, i]).unsqueeze(0))
             rte_batch.append(torch.cat(rte_list, dim=0).unsqueeze(0))
         return torch.cat(rte_batch, dim=0)
+
+
+class CrossAttention(nn.Module):
+    def __init__(self, feature_dim):
+        super(CrossAttention, self).__init__()
+        self.att = nn.MultiheadAttention(feature_dim, num_heads=1)
+        self.fc_query = nn.Linear(feature_dim, feature_dim)
+        self.fc_key = nn.Linear(feature_dim, feature_dim)
+        self.fc_value = nn.Linear(feature_dim, feature_dim)
+        self.fc_output = nn.Linear(feature_dim, feature_dim)
+
+    def forward(self, x, context):
+        """
+        x: 输入图像的特征表示，shape为 (N, C, H, W) N个batch
+        context: 上下文图像的特征表示，shape为 (M, C, H, W), M张上下文图像
+        """
+        N, C, H, W = x.size()
+        M = context.size(0)
+
+        # 将输入图像特征和上下文图像特征展开为二维矩阵，以便进行注意力计算
+        x_flat = x.view(N, C, -1).permute(0, 2, 1)  # shape: (N, HW, C)
+        context_flat = context.view(M, C, -1).permute(0, 2, 1)  # shape: (M, HW, C)
+
+        # 使用全连接层变换query、key、value
+        query = self.fc_query(x_flat)  # shape: (N, HW, C)
+        key = self.fc_key(context_flat)  # shape: (M, HW, C)
+        value = self.fc_value(context_flat)  # shape: (M, HW, C)
+
+        # 计算注意力加权的输出
+        attn_output, _ = self.att(query.permute(1, 0, 2), key.permute(1, 0, 2), value.permute(1, 0, 2))
+
+        # 将注意力加权的输出变换为原始形状并应用输出层 (N, C, HW)
+        attn_output = self.fc_output(attn_output.permute(1, 0, 2).contiguous().view(N, -1, C).permute(0, 2, 1))
+
+        attn_output = attn_output.permute(1, 2, 0).view(N, C, H, W)[0]
+
+        return attn_output

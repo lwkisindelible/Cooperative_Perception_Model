@@ -36,7 +36,7 @@ class PointPillarMymodel(nn.Module):
             self.shrink_flag = True
             self.shrink_conv = DownsampleConv(args['shrink_header'])
         self.compression = False
-
+        self.multi_scale = args['myfusion']['multi_scale']
         if args['compression'] > 0:
             self.compression = True
             self.naive_compressor = NaiveCompressor(256, args['compression'])
@@ -99,10 +99,10 @@ class PointPillarMymodel(nn.Module):
 
         spatial_features_2d = batch_dict['spatial_features_2d']
         # 关于H，opv2v是50， v2xvit是48
-        # ([8, 384, 100, 352]) --> ([8, 256, 50, 176]) # downsample feature to reduce memory
+        # ([8, 384, 96, 352]) --> ([8, 256, 48, 176]) # downsample feature to reduce memory
         if self.shrink_flag:
             spatial_features_2d = self.shrink_conv(spatial_features_2d)
-
+        # psm->([8, 2, 48, 176])
         psm_single = self.cls_head(spatial_features_2d)  # request map
         # psm_single = self.deform_head(spatial_features_2d)
         # # compressor
@@ -113,14 +113,26 @@ class PointPillarMymodel(nn.Module):
         prior_encoding = \
             data_dict['prior_encoding'].unsqueeze(-1).unsqueeze(-1)
         ## TODO: 你的模块在forward函数中的代码
-        fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
+        if self.multi_scale:
+            # Bypass communication cost, communicate at high resolution, neither shrink nor compress
+            fused_feature, communication_rates = self.fusion_net(batch_dict['spatial_features'],
+                                                                 prior_encoding,
+                                                                 psm_single,
+                                                                 record_len,
+                                                                 pairwise_t_matrix,
+                                                                 spatial_correction_matrix,
+                                                                 self.backbone)
+            if self.shrink_flag:
+                fused_feature = self.shrink_conv(fused_feature)
+        else:
+            fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
                                                              prior_encoding,
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix,
-                                                             spatial_correction_matrix)
-        # b h w c -> b c h w
-        fused_feature = fused_feature.permute(0, 3, 1, 2)
+                                                             spatial_correction_matrix,
+                                                             self.backbone)
+        # torch.Size([2, 256, 48, 176]) B, C, H, W
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
 

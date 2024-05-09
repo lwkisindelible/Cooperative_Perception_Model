@@ -1,6 +1,6 @@
 name: point_pillar_v2xvit
-root_dir: 'v2xset/train'
-validate_dir: 'v2xset/validate'
+root_dir: 'D:/BaiduNetdiskDownload/v2xset/train'
+validate_dir: 'D:/BaiduNetdiskDownload/v2xset/validate'
 
 wild_setting:
   async: true
@@ -16,7 +16,7 @@ wild_setting:
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 2
+  batch_size: &batch_size 1
   epoches: 60
   eval_freq: 1
   save_freq: 1

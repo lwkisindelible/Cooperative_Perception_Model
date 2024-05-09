@@ -37,8 +37,8 @@ class DownsampleConv(nn.Module):
                                                  config['dim'],
                                                  config['stride'],
                                                  config['padding']):
-            self.layers.append(DoubleConv(input_dim,
-                                          dim,
+            self.layers.append(DoubleConv(input_dim,  # 384
+                                          dim,  # 256
                                           kernel_size=ksize,
                                           stride=stride,
                                           padding=padding))

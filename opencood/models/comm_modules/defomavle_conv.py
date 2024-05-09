@@ -13,7 +13,6 @@ class DeformConv2d(nn.Module):
         self.padding = padding
         self.stride = stride
         self.zero_padding = nn.ZeroPad2d(padding)
-        # conv则是实际进行的卷积操作，注意这里步长设置为卷积核大小，因为与该卷积核进行卷积操作的特征图是由输出特征图中每个点扩展为其对应卷积核那么多个点后生成的。
         self.conv = nn.Conv2d(inc, outc, kernel_size=kernel_size, stride=kernel_size, bias=bias)
         # p_conv是生成offsets所使用的卷积，输出通道数为卷积核尺寸的平方的2倍，代表对应卷积核每个位置横纵坐标都有偏移量。
         self.p_conv = nn.Conv2d(inc, 2* kernel_size * kernel_size, kernel_size=3, padding=1, stride=stride)
@@ -22,7 +21,7 @@ class DeformConv2d(nn.Module):
 
         self.modulation = modulation  # modulation是可选参数,若设置为True,那么在进行卷积操作时,对应卷积核的每个位置都会分配一个权重。
         if modulation:
-            self.m_conv = nn.Conv2d(inc, kernel_size * kernel_size, kernel_size=3, padding=1, stride=stride)
+            self.m_conv = nn.Conv2d(inc, kernel_size*kernel_size, kernel_size=3, padding=1, stride=stride)
             nn.init.constant_(self.m_conv.weight, 0)
             self.m_conv.register_backward_hook(self._set_lr)
 
@@ -51,15 +50,13 @@ class DeformConv2d(nn.Module):
         q_lt = p.detach().floor()
         q_rb = q_lt + 1
 
-        q_lt = torch.cat([torch.clamp(q_lt[..., :N], 0, x.size(2) - 1), torch.clamp(q_lt[..., N:], 0, x.size(3) - 1)],
-                         dim=-1).long()
-        q_rb = torch.cat([torch.clamp(q_rb[..., :N], 0, x.size(2) - 1), torch.clamp(q_rb[..., N:], 0, x.size(3) - 1)],
-                         dim=-1).long()
+        q_lt = torch.cat([torch.clamp(q_lt[..., :N], 0, x.size(2)-1), torch.clamp(q_lt[..., N:], 0, x.size(3)-1)], dim=-1).long()
+        q_rb = torch.cat([torch.clamp(q_rb[..., :N], 0, x.size(2)-1), torch.clamp(q_rb[..., N:], 0, x.size(3)-1)], dim=-1).long()
         q_lb = torch.cat([q_lt[..., :N], q_rb[..., N:]], dim=-1)
         q_rt = torch.cat([q_rb[..., :N], q_lt[..., N:]], dim=-1)
 
         # clip p
-        p = torch.cat([torch.clamp(p[..., :N], 0, x.size(2) - 1), torch.clamp(p[..., N:], 0, x.size(3) - 1)], dim=-1)
+        p = torch.cat([torch.clamp(p[..., :N], 0, x.size(2)-1), torch.clamp(p[..., N:], 0, x.size(3)-1)], dim=-1)
 
         # bilinear kernel (b, h, w, N)
         g_lt = (1 + (q_lt[..., :N].type_as(p) - p[..., :N])) * (1 + (q_lt[..., N:].type_as(p) - p[..., N:]))
@@ -92,33 +89,27 @@ class DeformConv2d(nn.Module):
         return out
 
     def _get_p_n(self, N, dtype):
-        # 由于卷积核中心点位置是其尺寸的一半，于是中心点向左（上）方向移动尺寸的一半就得到起始点，向右（下）方向移动另一半就得到终止点
         p_n_x, p_n_y = torch.meshgrid(
-            torch.arange(-(self.kernel_size - 1) // 2, (self.kernel_size - 1) // 2 + 1),
-            torch.arange(-(self.kernel_size - 1) // 2, (self.kernel_size - 1) // 2 + 1))
+            torch.arange(-(self.kernel_size-1)//2, (self.kernel_size-1)//2+1),
+            torch.arange(-(self.kernel_size-1)//2, (self.kernel_size-1)//2+1))
         # (2N, 1)
         p_n = torch.cat([torch.flatten(p_n_x), torch.flatten(p_n_y)], 0)
-        p_n = p_n.view(1, 2 * N, 1, 1).type(dtype)
+        p_n = p_n.view(1, 2*N, 1, 1).type(dtype)
 
         return p_n
 
     def _get_p_0(self, h, w, N, dtype):
-        # p0_y、p0_x就是输出特征图每点映射到输入特征图上的纵、横坐标值。
         p_0_x, p_0_y = torch.meshgrid(
-            torch.arange(1, h * self.stride + 1, self.stride),
-            torch.arange(1, w * self.stride + 1, self.stride))
-
+            torch.arange(1, h*self.stride+1, self.stride),
+            torch.arange(1, w*self.stride+1, self.stride))
         p_0_x = torch.flatten(p_0_x).view(1, 1, h, w).repeat(1, N, 1, 1)
         p_0_y = torch.flatten(p_0_y).view(1, 1, h, w).repeat(1, N, 1, 1)
         p_0 = torch.cat([p_0_x, p_0_y], 1).type(dtype)
 
         return p_0
 
-    # 输出特征图上每点（对应卷积核中心）加上其对应卷积核每个位置的相对（横、纵）坐标后再加上自学习的（横、纵坐标）偏移量。
-    # p0就是将输出特征图每点对应到卷积核中心，然后映射到输入特征图中的位置；
-    # pn则是p0对应卷积核每个位置的相对坐标；
     def _get_p(self, offset, dtype):
-        N, h, w = offset.size(1) // 2, offset.size(2), offset.size(3)
+        N, h, w = offset.size(1)//2, offset.size(2), offset.size(3)
 
         # (1, 2N, 1, 1)
         p_n = self._get_p_n(N, dtype)
@@ -128,7 +119,6 @@ class DeformConv2d(nn.Module):
         return p
 
     def _get_x_q(self, x, q, N):
-        # 计算双线性插值点的4邻域点对应的权重
         b, h, w, _ = q.size()
         padded_w = x.size(3)
         c = x.size(1)
@@ -136,7 +126,7 @@ class DeformConv2d(nn.Module):
         x = x.contiguous().view(b, c, -1)
 
         # (b, h, w, N)
-        index = q[..., :N] * padded_w + q[..., N:]  # offset_x*w + offset_y
+        index = q[..., :N]*padded_w + q[..., N:]  # offset_x*w + offset_y
         # (b, c, h*w*N)
         index = index.contiguous().unsqueeze(dim=1).expand(-1, c, -1, -1, -1).contiguous().view(b, c, -1)
 
@@ -147,8 +137,7 @@ class DeformConv2d(nn.Module):
     @staticmethod
     def _reshape_x_offset(x_offset, ks):
         b, c, h, w, N = x_offset.size()
-        x_offset = torch.cat([x_offset[..., s:s + ks].contiguous().view(b, c, h, w * ks) for s in range(0, N, ks)],
-                             dim=-1)
-        x_offset = x_offset.contiguous().view(b, c, h * ks, w * ks)
+        x_offset = torch.cat([x_offset[..., s:s+ks].contiguous().view(b, c, h, w*ks) for s in range(0, N, ks)], dim=-1)
+        x_offset = x_offset.contiguous().view(b, c, h*ks, w*ks)
 
         return x_offset
