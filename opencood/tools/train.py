@@ -37,7 +37,7 @@ def train_parser():
 
 def main():
     opt = train_parser()
-    print(opt.hypes_yaml)
+    # print(opt)
     hypes = yaml_utils.load_yaml(opt.hypes_yaml, opt)
 
     multi_gpu_utils.init_distributed_mode(opt)
@@ -45,8 +45,8 @@ def main():
     print('-----------------Dataset Building------------------')
     opencood_train_dataset = build_dataset(hypes, visualize=False, train=True)
     opencood_validate_dataset = build_dataset(hypes, visualize=False, train=False)
-    print("data: ")
-    pprint.pprint(opencood_train_dataset)
+    # print("data: ")
+    # pprint.pprint(opencood_train_dataset)
     if opt.distributed:
         sampler_train = DistributedSampler(opencood_train_dataset)
         sampler_val = DistributedSampler(opencood_validate_dataset,
@@ -69,7 +69,7 @@ def main():
                                   batch_size=hypes['train_params']['batch_size'],
                                   num_workers=0,
                                   collate_fn=opencood_train_dataset.collate_batch_train,
-                                  shuffle=False,
+                                  shuffle=True,
                                   pin_memory=False,
                                   drop_last=True)
         val_loader = DataLoader(opencood_validate_dataset,

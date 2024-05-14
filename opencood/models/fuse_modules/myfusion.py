@@ -30,12 +30,12 @@ class MyFusion(nn.Module):
         # if self.use_RTE:
         #     self.rte = RTE(cav_att_config['dim'], self.RTE_ratio)
         if self.multi_scale:
-            layer_nums = args['layer_nums']
-            num_filters = args['num_filters']
-            self.num_levels = len(layer_nums)
+            layer_nums = args['layer_nums']  # [ 3, 5, 8 ]
+            num_filters = args['num_filters']  # [ 64, 128, 256 ]
+            self.num_levels = len(layer_nums) # 3
             self.fuse_modules = nn.ModuleList()
             for idx in range(self.num_levels):
-                if self.use_RTE:
+                if self.use_RTE:  # cav_att_config['dim']: [ 64, 128, 256 ]
                     self.rtes.append(RTE(cav_att_config['dim'][idx], self.RTE_ratio))
                 fuse_network = AttentionFusion(num_filters[idx])
                 self.fuse_modules.append(fuse_network)
@@ -94,7 +94,7 @@ class MyFusion(nn.Module):
                 # (B,L,H,W,C)
                 batch_node_features = batch_node_features[..., :-3]
                 if self.use_RTE:
-                    # dt: (B,L)
+                    # dt: (B,L) # 这个0，0，1最后的1就表示的是[v,t,i]中的t。
                     dt = prior_encoding[:, :, 0, 0, 1].to(torch.int)
                     batch_node_features = self.rtes[i](batch_node_features, dt)
                 batch_node_features = self.sttf(batch_node_features, spatial_correction_matrix)

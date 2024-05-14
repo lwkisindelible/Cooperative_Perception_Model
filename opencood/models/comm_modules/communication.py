@@ -64,7 +64,7 @@ class Communication(nn.Module):
                 zeros_mask = torch.zeros_like(communication_maps).to(communication_maps.device)
                 # torch.Size([4, 1, 48, 176])
                 communication_mask = torch.where(communication_maps > self.threshold, ones_mask, zeros_mask)
-                print("sum:", communication_maps.sum())
+                # print("sum:", communication_maps.sum())
             else:
                 communication_mask = torch.ones_like(communication_maps).to(communication_maps.device)
 

@@ -339,7 +339,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         infra = torch.from_numpy(np.array(infra))
         spatial_correction_matrix_list = \
             torch.from_numpy(np.array(spatial_correction_matrix_list))
-        # (B, max_cav, 3)
+        # (B, max_cav, 3)  vti都是列表，根据dim=-1拼接，最后一维变成了3,有多个[v,t,i]这样的组合。
         prior_encoding = \
             torch.stack([velocity, time_delay, infra], dim=-1).float()
         # (B, max_cav)

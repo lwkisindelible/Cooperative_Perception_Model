@@ -134,7 +134,7 @@ class BaseDataset(Dataset):
             cav_list = sorted([x for x in os.listdir(scenario_folder)
                                if os.path.isdir(
                     os.path.join(scenario_folder, x))])
-            print("cav_list: ", cav_list)
+            # print("cav_list: ", cav_list)
             assert len(cav_list) > 0
 
             # roadside unit data's id is always negative, so here we want to
@@ -152,15 +152,15 @@ class BaseDataset(Dataset):
 
                 # save all yaml files to the dictionary
                 cav_path = os.path.join(scenario_folder, cav_id)
-                print("cav_path: ", cav_path)
+                # print("cav_path: ", cav_path)
                 # use the frame number as key, the full path as the values
                 yaml_files = \
                     sorted([os.path.join(cav_path, x)
                             for x in os.listdir(cav_path) if
                             x.endswith('.yaml') and 'additional' not in x])
                 timestamps = self.extract_timestamps(yaml_files)
-                print("yaml_files: ", yaml_files[0])
-                print("timestamps: ", timestamps[0])
+                # print("yaml_files: ", yaml_files[0])
+                # print("timestamps: ", timestamps[0])
                 for timestamp in timestamps:
                     self.scenario_database[i][cav_id][timestamp] = \
                         OrderedDict()
@@ -326,7 +326,7 @@ class BaseDataset(Dataset):
         ego_lidar_pose = None
         ego_cav_content = None
         # Find ego pose first
-        print("timestamp_key: ", timestamp_key)
+        # print("timestamp_key: ", timestamp_key)
         for cav_id, cav_content in scenario_database.items():
             if cav_content['ego']:
                 ego_cav_content = cav_content
@@ -381,7 +381,7 @@ class BaseDataset(Dataset):
 
         # the data is 10 hz for both opv2v and v2x-set
         # todo: it may not be true for other dataset like DAIR-V2X and V2X-Sim
-        time_delay = time_delay // 100
+        time_delay = time_delay // 100 # ? 为什么除以100
         return time_delay if self.async_flag else 0
 
     def add_loc_noise(self, pose, xyz_std, ryp_std):
