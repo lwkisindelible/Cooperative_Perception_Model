@@ -79,13 +79,11 @@ class PointPillarMymodel(nn.Module):
             p.requires_grad = False
 
     def forward(self, data_dict):
-
         voxel_features = data_dict['processed_lidar']['voxel_features']
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
-        pairwise_t_matrix = data_dict['pairwise_t_matrix']
-        spatial_correction_matrix = data_dict['spatial_correction_matrix']
         record_len = data_dict['record_len']
+        pairwise_t_matrix = data_dict['pairwise_t_matrix']
 
         batch_dict = {'voxel_features': voxel_features,
                       'voxel_coords': voxel_coords,
@@ -96,7 +94,7 @@ class PointPillarMymodel(nn.Module):
         # n, c -> N, C, H, W
         batch_dict = self.scatter(batch_dict)
         batch_dict = self.backbone(batch_dict)
-
+        # N, C, H', W': [N, 256, 48, 176]
         spatial_features_2d = batch_dict['spatial_features_2d']
         # 关于H，opv2v是50， v2xvit是48
         # ([8, 384, 96, 352]) --> ([8, 256, 48, 176]) # downsample feature to reduce memory
@@ -109,36 +107,25 @@ class PointPillarMymodel(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        # (B, max_cav, 3) --> ([4, 5, 3, 1, 1])
-        prior_encoding = \
-            data_dict['prior_encoding'].unsqueeze(-1).unsqueeze(-1)
-        ## TODO: 你的模块在forward函数中的代码
         if self.multi_scale:
             # Bypass communication cost, communicate at high resolution, neither shrink nor compress
             fused_feature, communication_rates = self.fusion_net(batch_dict['spatial_features'],
-                                                                 prior_encoding,
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix,
-                                                                 spatial_correction_matrix,
                                                                  self.backbone)
             if self.shrink_flag:
                 fused_feature = self.shrink_conv(fused_feature)
         else:
             fused_feature, communication_rates = self.fusion_net(spatial_features_2d,
-                                                             prior_encoding,
                                                                  psm_single,
                                                                  record_len,
-                                                                 pairwise_t_matrix,
-                                                             spatial_correction_matrix,
-                                                             self.backbone)
+                                                                 pairwise_t_matrix)
         # torch.Size([2, 256, 48, 176]) B, C, H, W
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
 
-        output_dict = {'psm': psm,
-                       'rm': rm}
-
+        output_dict = {'psm': psm, 'rm': rm, 'com': communication_rates}
         return output_dict
 
 
