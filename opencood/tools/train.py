@@ -19,8 +19,8 @@ from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
 
 import pprint
-
-
+# python opencood/tools/train.py --hypes_yaml opencood/hypes_yaml/point_pillar_intermediate_fusion.yaml
+# CUDA_VISIBLE_DEVICES=3 python opencood/tools/train.py --hypes_yaml opencood/hypes_yaml/point_pillar_mymodel.yaml
 def train_parser():
     parser = argparse.ArgumentParser(description="synthetic data generation")
     parser.add_argument("--hypes_yaml", type=str, required=True,
