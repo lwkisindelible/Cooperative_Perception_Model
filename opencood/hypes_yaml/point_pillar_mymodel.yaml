@@ -3,7 +3,7 @@ root_dir: 'D:/BaiduNetdiskDownload/v2xset/train'
 validate_dir: 'D:/BaiduNetdiskDownload/v2xset/validate'
 
 wild_setting: # setting related to noise
-  async: true
+  async: False
   async_mode: 'sim'
   async_overhead: 100
   backbone_delay: 10

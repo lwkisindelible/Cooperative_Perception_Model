@@ -14,7 +14,7 @@ from opencood.models.sub_modules.downsample_conv import DownsampleConv
 from opencood.models.sub_modules.naive_compress import NaiveCompressor
 from opencood.models.fuse_modules.myfusion import MyFusion
 from opencood.models.comm_modules.defomavle_conv import DeformConv2d
-
+from opencood.models.comm_modules.communication import CBAM
 
 class PointPillarMymodel(nn.Module):
     def __init__(self, args):
@@ -50,6 +50,9 @@ class PointPillarMymodel(nn.Module):
                                   kernel_size=1)
         self.reg_head = nn.Conv2d(args['head_dim'], 7 * args['anchor_number'],
                                   kernel_size=1)
+
+        self.cbam = CBAM(256)
+
         if args['backbone_fix']:
             self.backbone_fix()
 
@@ -122,6 +125,7 @@ class PointPillarMymodel(nn.Module):
                                                                  record_len,
                                                                  pairwise_t_matrix)
         # torch.Size([2, 256, 48, 176]) B, C, H, W
+        fused_feature = self.cbam(fused_feature)
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
 

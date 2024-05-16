@@ -54,9 +54,9 @@ class AttFusion(nn.Module):
         out = []
         for xx in split_x:
             cav_num = xx.shape[0]
-            xx = xx.view(cav_num, C, -1).permute(2, 0, 1)
+            xx = xx.view(cav_num, C, -1).permute(2, 0, 1) # L,C,H*W -> H*W,L,C
             h = self.att(xx, xx, xx)
-            h = h.permute(1, 2, 0).view(cav_num, C, W, H)[0, ...]
+            h = h.permute(1, 2, 0).view(cav_num, C, W, H)[0, ...] # H*W,L,C -> L,C,H*W
             out.append(h)
         return torch.stack(out)
 
