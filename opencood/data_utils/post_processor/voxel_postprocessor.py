@@ -36,7 +36,7 @@ class VoxelPostprocessor(BasePostprocessor):
 
         assert self.anchor_num == len(r)
         r = [math.radians(ele) for ele in r]
-
+        # voxel_size[1],[0]  voxel_size: &voxel_size [0.4, 0.4, 4]
         vh = self.params['anchor_args']['vh']
         vw = self.params['anchor_args']['vw']
 

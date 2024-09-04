@@ -9,6 +9,34 @@ from opencood.models.sub_modules.torch_transformation_utils import get_discretiz
     get_transformation_matrix, warp_affine
 from opencood.models.fuse_modules.self_attn import ScaledDotProductAttention
 
+import cv2
+
+
+def generate_heatmap(features):
+    # Assuming features is a numpy array of shape (B, C, H, W)
+    B, C, H, W = features.shape
+
+    features = features.detach().cpu().numpy()
+    # Step 1: Average the feature maps across the channel dimension
+    # This gives a shape of (B, H, W)
+    heatmaps = np.mean(features, axis=1)  # You can also use np.sum(features, axis=1) if you prefer summation
+
+    # Step 2: Normalize the heatmaps for better visualization
+    heatmaps = (heatmaps - np.min(heatmaps, axis=(1, 2), keepdims=True)) / (
+            np.max(heatmaps, axis=(1, 2), keepdims=True) - np.min(heatmaps, axis=(1, 2), keepdims=True) + 1e-8
+    )
+
+    # Step 3: Convert heatmaps to RGB using a colormap
+    heatmaps_rgb = []
+    for i in range(B):
+        heatmap = heatmaps[i]
+        heatmap = np.uint8(255 * heatmap)  # Scale to 0-255
+        heatmap_rgb = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)  # Apply colormap
+        heatmaps_rgb.append(heatmap_rgb)
+
+    return heatmaps_rgb
+
+
 class Communication(nn.Module):
     def __init__(self, args):
         super(Communication, self).__init__()
@@ -59,7 +87,7 @@ class Communication(nn.Module):
                 ones_fill = torch.ones(L, K, dtype=communication_maps.dtype, device=communication_maps.device)
                 communication_mask = torch.scatter(communication_mask, -1, indices, ones_fill).reshape(L, 1, H, W)
                 # torch.scatter(input, dim, index, src),将src中的数据根据index中的索引按照dim的方向填入到input中
-            elif self.threshold: # 如果有threshold
+            elif self.threshold:  # 如果有threshold
                 ones_mask = torch.ones_like(communication_maps).to(communication_maps.device)
                 zeros_mask = torch.zeros_like(communication_maps).to(communication_maps.device)
                 # torch.Size([4, 1, 48, 176])
@@ -102,6 +130,7 @@ class STTF(nn.Module):
         x = x.permute(0, 1, 3, 4, 2)
         return x  # 返回的是自己提取的特征和已经接受到的其他车辆的特征。
 
+
 class Channel_Request_Attention(nn.Module):
     def __init__(self, in_planes, ratio=16):
         super(Channel_Request_Attention, self).__init__()
@@ -117,6 +146,7 @@ class Channel_Request_Attention(nn.Module):
         avgout = self.sharedMLP(self.avg_pool(x))
         maxout = self.sharedMLP(self.max_pool(x))
         return self.sigmoid(avgout + maxout)
+
 
 class Spatial_Request_Attention(nn.Module):
     def __init__(self, kernel_size=3):
@@ -185,6 +215,7 @@ class TemporalAttention(nn.Module):
 
         return out
 
+
 class RelTemporalEncoding(nn.Module):
     """
     Implement the Temporal Encoding (Sinusoid) function.
@@ -210,6 +241,7 @@ class RelTemporalEncoding(nn.Module):
         # So we can train on 100ms but test on 50ms
         return x + self.lin(self.emb(t * self.RTE_ratio)).unsqueeze(
             0).unsqueeze(1)
+
 
 # Delay-aware positional encoding
 class RTE(nn.Module):

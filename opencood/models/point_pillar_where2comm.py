@@ -1,6 +1,8 @@
 import torch.nn as nn
+from matplotlib import pyplot as plt
 
 from opencood.hypes_yaml import yaml_utils
+from opencood.models.comm_modules.communication import generate_heatmap
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
 from opencood.models.fuse_modules.where2comm_fuse import Where2comm
 from opencood.models.sub_modules.downsample_conv import DownsampleConv
@@ -114,6 +116,13 @@ class PointPillarWhere2comm(nn.Module):
                                                                  psm_single,
                                                                  record_len,
                                                                  pairwise_t_matrix)
+
+        heatmaps = generate_heatmap(fused_feature)
+        for i in range(len(heatmaps)):
+            plt.imshow(heatmaps[i])
+            plt.title(f"Heatmap {i + 1}")
+            plt.axis('off')
+            plt.show()
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

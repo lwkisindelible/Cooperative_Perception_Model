@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
+from matplotlib import pyplot as plt
 
+from opencood.models.comm_modules.communication import generate_heatmap
 from opencood.models.sub_modules.pillar_vfe import PillarVFE
 from opencood.models.sub_modules.point_pillar_scatter import PointPillarScatter
 from opencood.models.sub_modules.base_bev_backbone import BaseBEVBackbone
@@ -112,6 +114,12 @@ class PointPillarTransformer(nn.Module):
         fused_feature = self.fusion_net(regroup_feature, mask, spatial_correction_matrix)
         # b h w c -> b c h w
         fused_feature = fused_feature.permute(0, 3, 1, 2)
+        heatmaps = generate_heatmap(fused_feature)
+        for i in range(len(heatmaps)):
+            plt.imshow(heatmaps[i])
+            plt.title(f"Heatmap {i + 1}")
+            plt.axis('off')
+            plt.show()
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)

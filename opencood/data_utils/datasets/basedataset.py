@@ -120,7 +120,7 @@ class BaseDataset(Dataset):
         scenario_folders = sorted([os.path.join(root_dir, x)
                                    for x in os.listdir(path=root_dir) if
                                    os.path.isdir(os.path.join(root_dir, x))])
-        print("scenario_folders: ", scenario_folders)  # test
+        # print("scenario_folders: ", scenario_folders)  # test
         # Structure: {scenario_id : {cav_1 : {timestamp1 : {yaml: path,
         # lidar: path, cameras:list of path}}}}
         self.scenario_database = OrderedDict()

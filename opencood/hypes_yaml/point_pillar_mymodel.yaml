@@ -3,12 +3,12 @@ root_dir: 'D:/BaiduNetdiskDownload/v2xset/train'
 validate_dir: 'D:/BaiduNetdiskDownload/v2xset/validate'
 
 wild_setting: # setting related to noise
-  async: False
+  async: True
   async_mode: 'sim'
-  async_overhead: 100
+  async_overhead: 200
   backbone_delay: 10
   data_size: 1.06
-  loc_err: False
+  loc_err: True
   ryp_std: 0.2
   xyz_std: 0.2
   seed: 25
@@ -76,7 +76,7 @@ model:
     lidar_range: *cav_lidar
     anchor_number: *achor_num
     max_cav: *max_cav
-    compression: 0 # compression rate
+    compression: 32 # compression rate
     backbone_fix: false
     head_dim: 256
 
