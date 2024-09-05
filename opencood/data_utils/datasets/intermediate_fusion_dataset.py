@@ -135,6 +135,12 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         object_stack = np.vstack(object_stack)
         object_stack = object_stack[unique_indices]
 
+        object_stack = np.load(f'OpenCOOD/out_v4/out_pseduo_labels_v4_{idx}.npy')
+        for arr in object_stack:
+            t = arr[3]
+            arr[3] = arr[5].copy()
+            arr[5] = t
+
         # make sure bounding boxes across all frames have the same number
         object_bbx_center = \
             np.zeros((self.params['postprocess']['max_num'], 7))

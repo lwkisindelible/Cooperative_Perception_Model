@@ -533,15 +533,20 @@ if __name__ == '__main__':
             time_num = time_num + 1
             out_pseduo_labels, out_pseduo_labels_support, table = box_filter_v2(gt, dense_points_multi_frame, key,
                                                                          ok)
-            table_sum = table_sum + table
-            if time_num == 100:
-                table_sum = table_sum / 100
-                for row in table_sum:
-                    formatted_row = ["{:.4f},".format(value) for value in row]
-                    print("  ".join(formatted_row))
-                exit()
-            # exit()
+            # table_sum = table_sum + table
+            # if time_num == 100:
+            #     table_sum = table_sum / 100
+            #     for row in table_sum:
+            #         formatted_row = ["{:.4f},".format(value) for value in row]
+            #         print("  ".join(formatted_row))
+            #     exit()
+            # # exit()
+            inverted_list = [not x for x in out_pseduo_labels]
 
+            np.save(f'D:\\OPV2V\\out_v4\\out_pseduo_labels_v4_{num_timestamp}.npy',
+                    pseduo_labels_[out_pseduo_labels])
+            np.save(f'D:\\OPV2V\\out_v4\\out_pseduo_labels_noise_v4_{num_timestamp}.npy',
+                    pseduo_labels_[inverted_list])
             # np.save(f'F:\\OPV2V\\OPV2V\\out_v3\\out_pseduo_labels_v3_{num_timestamp}.npy', pseduo_labels_[mask])
             #################################################################################
             #     # clear_points = remove_ground_points(multi_agent_point[m][key][:, :3])
