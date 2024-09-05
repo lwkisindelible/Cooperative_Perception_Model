@@ -179,13 +179,13 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
     new_boxes = []
     new_boxes_support = []
 
-    # num_r = 9
-    # table = np.zeros((num_r, 12), float)
+    num_r = 9
+    table = np.zeros((num_r, 22), float)
 
     # multi_frame_points_remove_ground = []
     # for f in range(len(multi_frame_points)):
     #     multi_frame_points_remove_ground.append(remove_ground_points(multi_frame_points[f]))
-    # cnts = np.zeros(num_r)
+    cnts = np.zeros(num_r)
     for j in range(num_box):
         center_annotion = pseduo_labels[j, :2]  # each car, x,y
         # pose_center = ok[0, :2]
@@ -200,15 +200,38 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
         r = r / len(ok)
         # disance_with_ok = r
         disance_with_ok = np.linalg.norm(center_annotion - pose_center[:2])
+        if disance_with_ok < 0.5 * r:
+            inter_points_threshold = 20
+            index = 0
+        elif 0.5 * r <= disance_with_ok < r:
+            inter_points_threshold = 19
+            index = 1
+        elif r <= disance_with_ok < 1.5 * r:
+            inter_points_threshold = 18
+            index = 2
+        elif 1.5 * r <= disance_with_ok < 2 * r:
+            inter_points_threshold = 17
+            index = 3
+        elif 2 * r <= disance_with_ok < 2.5 * r:
+            inter_points_threshold = 16
+            index = 4
+        elif 2.5 * r <= disance_with_ok < 3 * r:
+            inter_points_threshold = 15
+            index = 5
+        elif 3 * r <= disance_with_ok < 3.5 * r:
+            inter_points_threshold = 14
+            index = 6
+        elif 3.5 * r <= disance_with_ok < 4 * r:
+            inter_points_threshold = 13
+            index = 7
+        # if disance_with_ok < 2 * r:
+        #     inter_points_threshold = 200
+        # elif 2 * r < disance_with_ok < 2.5 * r:
+        #     inter_points_threshold = 80
+        # else:
+        #     inter_points_threshold = 5
 
-        if disance_with_ok < 2 * r:
-            inter_points_threshold = 200
-        elif 2 * r < disance_with_ok < 2.5 * r:
-            inter_points_threshold = 80
-        else:
-            inter_points_threshold = 5
-
-        # cnts[index] = cnts[index] + 1
+        cnts[index] = cnts[index] + 1
         inter_points_number = []
         for i in range(len(multi_frame_points)):
             inter_mask = in_hull(multi_frame_points[i][:, :3],
@@ -216,27 +239,27 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
             inter_points = multi_frame_points[i][inter_mask]
             inter_points_number.append(inter_points.shape[0])
 
-        # table[index][0] = table[index][0] + sum(x == 0 for x in inter_points_number) / (1.0 * len(
-        #         inter_points_number))
-        # for i in range(10):
-        #     table[index][i+1] = table[index][i+1] + sum((i + 1) * 5 >= x > i * 5 for x in inter_points_number) / (1.0 * len(
-        #         inter_points_number))
-        #     # print(f"table[index][{i}]: ", sum((i + 1) * 10 > x >= i * 10 for x in inter_points_number) / (1.0 * len(
-        #     #     inter_points_number)))
-        # # print("table[index][10]: ", sum(x >= 100 for x in inter_points_number) / (1.0 * len(inter_points_number)))
-        # table[index][11] = table[index][11] + sum(x > 100 for x in inter_points_number) / (1.0 * len(inter_points_number))
-        # # print("table: ", table)
-        # # print("num_box: ", num_box)
+        table[index][0] = table[index][0] + sum(x == 0 for x in inter_points_number) / (1.0 * len(
+                inter_points_number))
+        for i in range(20):
+            table[index][i+1] = table[index][i+1] + sum((i + 1) * 10 >= x > i * 10 for x in inter_points_number) / (1.0 * len(
+                inter_points_number))
+            # print(f"table[index][{i}]: ", sum((i + 1) * 10 > x >= i * 10 for x in inter_points_number) / (1.0 * len(
+            #     inter_points_number)))
+        # print("table[index][10]: ", sum(x >= 100 for x in inter_points_number) / (1.0 * len(inter_points_number)))
+        table[index][21] = table[index][21] + sum(x > 100 for x in inter_points_number) / (1.0 * len(inter_points_number))
+        # print("table: ", table)
+        # print("num_box: ", num_box)
         # input()
 
         state = classify_state(inter_points_number, key, inter_points_threshold)
-        print('################', inter_points_number, state, inter_points_threshold, disance_with_ok)
+        # print('################', inter_points_number, state, inter_points_threshold, disance_with_ok)
 
-        vi.add_points(multi_frame_points[key][:, :3])
-        vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
-        # vi.add_3D_boxes(gt, color='green')
-        vi.add_3D_boxes(pseduo_labels[j].reshape(1, 7), color='red')
-        vi.show_3D()
+        # vi.add_points(multi_frame_points[key][:, :3])
+        # vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
+        # # vi.add_3D_boxes(gt, color='green')
+        # vi.add_3D_boxes(pseduo_labels[j].reshape(1, 7), color='red')
+        # vi.show_3D()
 
         # print(inter_points_number, inter_points_number[key], len(inter_points_number), state)
 
@@ -252,15 +275,15 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
                 new_boxes_support.append(False)
 
     # print(cnts)
-    # for i in range(num_r):
-    #     table[i] = table[i] / cnts[i]
+    for i in range(num_r):
+        table[i] = table[i] / cnts[i]
     # table = table / num_box
     # print(table)
     # for row in table:
     #     formatted_row = ["{:.4f},".format(value) for value in row]
     #     print("  ".join(formatted_row))
 
-    return new_boxes, new_boxes_support
+    return new_boxes, new_boxes_support, table
 
 
 def pcd_to_np(pcd_file):
@@ -455,10 +478,12 @@ if __name__ == '__main__':
         multi_agent_point = np.load(f'E:\\OPV2V\\multi_agent_point_remove_ground\\multi_agent_point{count}.npy',
                                     allow_pickle=True)
         poses = np.load(f'E:\\OPV2V\\multi_agent_point_pose\\multi_agent_point_pose{count}.npy', allow_pickle=True)
-
+        table_sum = np.zeros((9, 22), float)
+        time_num = 0
         for num_timestamp in tqdm(range(node_timestamp - len(timestamps), node_timestamp)):
             # if count < 2:
             #     continue
+            # print(num_timestamp)
             pseduo_labels = np.load(f'E:\\OPV2V\\pre_box\\pre_{num_timestamp}.npy')
             gt = np.load(f'E:\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')
             # pseduo_labels = gt.copy()
@@ -505,8 +530,16 @@ if __name__ == '__main__':
             for m in range(len(cav_list)):
                 ok.append(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3))
 
-            out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(gt, dense_points_multi_frame, key,
+            time_num = time_num + 1
+            out_pseduo_labels, out_pseduo_labels_support, table = box_filter_v2(gt, dense_points_multi_frame, key,
                                                                          ok)
+            table_sum = table_sum + table
+            if time_num == 100:
+                table_sum = table_sum / 100
+                for row in table_sum:
+                    formatted_row = ["{:.4f},".format(value) for value in row]
+                    print("  ".join(formatted_row))
+                exit()
             # exit()
 
             # np.save(f'F:\\OPV2V\\OPV2V\\out_v3\\out_pseduo_labels_v3_{num_timestamp}.npy', pseduo_labels_[mask])
@@ -520,15 +553,15 @@ if __name__ == '__main__':
             #     vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
             #     vi.show_3D()
 
-            for m in range(len(cav_list)):
-                vi.add_points(multi_agent_point[m][key][:, :3])
-                vi.add_points(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3),
-                              radius=10, color='red')
-                # vi.add_3D_boxes(pseduo_labels, color='black')
-                # vi.add_points(ok_0, radius=10, color='red')
-            vi.add_3D_boxes(gt, color='green')
-            vi.add_3D_boxes(pseduo_labels[mask], color='black')
-            vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
-            vi.show_3D()
+            # for m in range(len(cav_list)):
+            #     vi.add_points(multi_agent_point[m][key][:, :3])
+            #     vi.add_points(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3),
+            #                   radius=10, color='red')
+            #     # vi.add_3D_boxes(pseduo_labels, color='black')
+            #     # vi.add_points(ok_0, radius=10, color='red')
+            # vi.add_3D_boxes(gt, color='green')
+            # vi.add_3D_boxes(pseduo_labels[mask], color='black')
+            # vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
+            # vi.show_3D()
 
         count += 1
