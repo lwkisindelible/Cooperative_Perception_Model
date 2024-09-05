@@ -10,6 +10,7 @@ from sklearn import linear_model
 from tqdm import tqdm
 import scipy
 from scipy.spatial import Delaunay
+import pandas as pd
 
 import math
 def max_consecutive_zeros(lst):
@@ -190,7 +191,7 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
     # multi_frame_points_remove_ground = []
     # for f in range(len(multi_frame_points)):
     #     multi_frame_points_remove_ground.append(remove_ground_points(multi_frame_points[f]))
-
+    data = []
     for j in range(num_box):
         center_annotion = pseduo_labels[j, :2]
         # pose_center = ok[0, :2]
@@ -220,7 +221,8 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
             inter_points_number.append(inter_points.shape[0])
 
         state = classify_state(inter_points_number, key, inter_points_threshold)
-        # print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
+        print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
+        data.append([state, inter_points_threshold, inter_points_number])
         # # #
         # vi.add_points(multi_frame_points[key][:, :3])
         # vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
@@ -229,9 +231,6 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
         # vi.show_3D()
 
         # print(inter_points_number, inter_points_number[key], len(inter_points_number), state)
-
-
-
 
         if state == 1:
             #new_boxes.append(pseduo_labels[j])
@@ -244,6 +243,10 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
             else:
                 new_boxes_support.append(False)
 
+    df = pd.DataFrame(data)
+    print(data)
+    df.to_csv('output.csv', index=False)
+    exit()
     return new_boxes, new_boxes_support
 
 
@@ -371,6 +374,10 @@ def load_yaml(file, opt=None):
 
     return param
 
+
+
+
+
 if __name__ == '__main__':
 
     vi = Viewer()
@@ -440,7 +447,8 @@ if __name__ == '__main__':
             # if count < 2:
             #     continue
             pseduo_labels = np.load(f'E:\\OPV2V\\pre_box\\pre_{num_timestamp}.npy')
-            gt = np.load(f'E:\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')
+            gt = np.load(f'E:\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')  # n*7
+            # exit()
             # pseduo_labels = gt.copy()
             pseduo_labels_ = pseduo_labels.copy()
 
@@ -487,12 +495,12 @@ if __name__ == '__main__':
 
             out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key, ok)
 
-            inverted_list = [not x for x in out_pseduo_labels]
+            # inverted_list = [not x for x in out_pseduo_labels]
 
             np.save(f'E:\\OPV2V\\out_v4\\out_pseduo_labels_v4_{num_timestamp}.npy',
                     pseduo_labels_[out_pseduo_labels])
-            np.save(f'E:\\OPV2V\\out_v4\\out_pseduo_labels_noise_v4_{num_timestamp}.npy',
-                    pseduo_labels_[inverted_list])
+            # np.save(f'E:\\OPV2V\\out_v4\\out_pseduo_labels_noise_v4_{num_timestamp}.npy',
+            #         pseduo_labels_[inverted_list])
             # np.save(f'F:\\OPV2V\\OPV2V\\out_v3\\out_pseduo_labels_v3_{num_timestamp}.npy', pseduo_labels_[mask])
             #################################################################################
             #     # clear_points = remove_ground_points(multi_agent_point[m][key][:, :3])
