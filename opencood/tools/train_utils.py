@@ -115,8 +115,8 @@ def create_model(hypes):
     model : opencood,object
         Model object.
     """
-    print("hypes['model']['args']: ")
-    pprint.pprint(hypes['model']['args'])
+    # print("hypes['model']['args']: ")
+    # pprint.pprint(hypes['model']['args'])
     backbone_name = hypes['model']['core_method']
     backbone_config = hypes['model']['args']
 
@@ -136,8 +136,8 @@ def create_model(hypes):
                                                        target_model_name))
         exit(0)
     instance = model(backbone_config)
-    print("instance: ")
-    pprint.pprint(instance)
+    # print("instance: ")
+    # pprint.pprint(instance)
     return instance
 
 

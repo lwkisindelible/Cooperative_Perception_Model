@@ -134,7 +134,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             [object_id_stack.index(x) for x in set(object_id_stack)]
         object_stack = np.vstack(object_stack)
         object_stack = object_stack[unique_indices]
-
+        # print("object_stack: ", object_stack)
         object_stack = np.load(f'OpenCOOD/out_v4/out_pseduo_labels_v4_{idx}.npy')
         for arr in object_stack:
             t = arr[3]
@@ -147,7 +147,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         mask = np.zeros(self.params['postprocess']['max_num'])
         object_bbx_center[:object_stack.shape[0], :] = object_stack
         mask[:object_stack.shape[0]] = 1
-
+        # print("object_bbx_center: ", object_bbx_center)
+        # exit()
         # merge preprocessed features from different cavs into the same dict
         cav_num = len(processed_features)
         merged_feature_dict = self.merge_features_to_dict(processed_features)

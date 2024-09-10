@@ -13,6 +13,8 @@ from scipy.spatial import Delaunay
 import pandas as pd
 
 import math
+
+
 def max_consecutive_zeros(lst):
     max_count = 0  # 初始化最大连续0的数量
     current_count = 0  # 初始化当前连续0的数量
@@ -25,6 +27,7 @@ def max_consecutive_zeros(lst):
             current_count = 0  # 如果不是0，重置当前计数
 
     return max_count
+
 
 def in_hull(p, hull):
     """
@@ -41,6 +44,7 @@ def in_hull(p, hull):
         flag = np.zeros(p.shape[0], dtype=np.bool)
 
     return flag
+
 
 def boxes_to_corners_3d(boxes3d):
     """
@@ -67,6 +71,7 @@ def boxes_to_corners_3d(boxes3d):
 
     return corners3d
 
+
 def rotate_points_along_z(points, angle):
     """
     Args:
@@ -80,7 +85,7 @@ def rotate_points_along_z(points, angle):
     zeros = np.zeros_like(angle)
     ones = np.ones_like(angle)
     rot_matrix = np.stack((
-        cosa,  sina, zeros,
+        cosa, sina, zeros,
         -sina, cosa, zeros,
         zeros, zeros, ones
     ), axis=1).reshape(-1, 3, 3).astype(float)
@@ -88,13 +93,17 @@ def rotate_points_along_z(points, angle):
     points_rot = np.concatenate((points_rot, points[:, :, 3:]), axis=-1)
     return points_rot
 
+
 def get_registration_angle(mat):
     cos_theta, sin_theta = mat[0, 0], mat[1, 0]
     cos_theta = np.clip(cos_theta, -1, 1)  # 限制cos_theta在-1到1之间
     theta_cos = np.arccos(cos_theta)
     return theta_cos if sin_theta >= 0 else 2 * np.pi - theta_cos
 
+
 import random
+
+
 def remove_ground_points(point_cloud, max_iterations=100, distance_threshold=0.2):
     ground_points = []
     non_ground_points = []
@@ -117,6 +126,7 @@ def remove_ground_points(point_cloud, max_iterations=100, distance_threshold=0.2
             non_ground_points = point_cloud[distances >= distance_threshold]
 
     return non_ground_points
+
 
 def classify_state(inter_points, key, inter_points_threshold):
     if not inter_points:  # 检查inter_points是否为空
@@ -172,12 +182,13 @@ def box_filter(pseduo_labels, multi_frame_points, key, ok):
             new_boxes_support.append(False)
 
         if state == 1:
-            #new_boxes.append(pseduo_labels[j])
+            # new_boxes.append(pseduo_labels[j])
             new_boxes.append(True)
         else:
             new_boxes.append(False)
 
     return new_boxes, new_boxes_support
+
 
 def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
     if pseduo_labels.ndim != 2 or pseduo_labels.shape[1] < 2:
@@ -186,12 +197,10 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
     num_box = pseduo_labels.shape[0]
     new_boxes = []
     new_boxes_support = []
-
-
     # multi_frame_points_remove_ground = []
     # for f in range(len(multi_frame_points)):
     #     multi_frame_points_remove_ground.append(remove_ground_points(multi_frame_points[f]))
-    data = []
+    # data = []
     for j in range(num_box):
         center_annotion = pseduo_labels[j, :2]
         # pose_center = ok[0, :2]
@@ -199,7 +208,7 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
         for cav in range(len(ok)):
             pose_center = ok[cav][0, :] + pose_center
         pose_center = pose_center / len(ok)
-        disance_with_ok = np.linalg.norm(center_annotion - pose_center[:2]) #距离中心点的距离
+        disance_with_ok = np.linalg.norm(center_annotion - pose_center[:2])  # 距离中心点的距离
 
         r = 0
         for cav in range(len(ok)):
@@ -216,24 +225,25 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
 
         inter_points_number = []
         for i in range(len(multi_frame_points)):
-            inter_mask = in_hull(multi_frame_points[i][:, :3], boxes_to_corners_3d(pseduo_labels[j][:7].reshape(-1, 7)).reshape(-1, 3))
+            inter_mask = in_hull(multi_frame_points[i][:, :3],
+                                 boxes_to_corners_3d(pseduo_labels[j][:7].reshape(-1, 7)).reshape(-1, 3))
             inter_points = multi_frame_points[i][inter_mask]
             inter_points_number.append(inter_points.shape[0])
 
         state = classify_state(inter_points_number, key, inter_points_threshold)
-        print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
-        data.append([state, inter_points_threshold, inter_points_number])
-        # # #
+        # print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
+        # # data.append([state, inter_points_threshold, inter_points_number])
+        # # # #
         # vi.add_points(multi_frame_points[key][:, :3])
         # vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
-        # # vi.add_3D_boxes(gt, color='green')
+        # vi.add_3D_boxes(gt, color='green')
         # vi.add_3D_boxes(pseduo_labels[j].reshape(1, 7), color='red')
         # vi.show_3D()
 
         # print(inter_points_number, inter_points_number[key], len(inter_points_number), state)
 
         if state == 1:
-            #new_boxes.append(pseduo_labels[j])
+            # new_boxes.append(pseduo_labels[j])
             new_boxes.append(True)
             new_boxes_support.append(False)
         else:
@@ -243,10 +253,10 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
             else:
                 new_boxes_support.append(False)
 
-    df = pd.DataFrame(data)
-    print(data)
-    df.to_csv('output.csv', index=False)
-    exit()
+    # df = pd.DataFrame(data)
+    # print(data)
+    # df.to_csv('output.csv', index=False)
+    # exit()
     return new_boxes, new_boxes_support
 
 
@@ -275,6 +285,7 @@ def pcd_to_np(pcd_file):
     pcd_np = np.hstack((xyz, intensity))
 
     return np.asarray(pcd_np, dtype=np.float32)
+
 
 def x_to_world(pose):
     """
@@ -319,6 +330,7 @@ def x_to_world(pose):
 
     return matrix
 
+
 def multi_pt2world(points_path, poses):
     points = []
     for point_path, pose in zip(points_path, poses):
@@ -330,12 +342,14 @@ def multi_pt2world(points_path, poses):
         points.append(point__)
     return points
 
+
 def pc_2_world(points, poses):
     point_homogeneous = np.hstack((points[:, :3], np.ones((points.shape[0], 1))))
     pose_ = x_to_world(poses)
     point_ = np.dot(pose_, point_homogeneous.T).T
     # points.append(point_)
     return point_
+
 
 def load_yaml(file, opt=None):
     """
@@ -375,40 +389,187 @@ def load_yaml(file, opt=None):
     return param
 
 
+# 计算IOU
+import numpy as np
+import os
+from scipy.spatial import ConvexHull
 
+
+def box_to_corners(center, dimensions, yaw):
+    """
+    将框的中心坐标、尺寸和yaw角度转换为8个角点的坐标
+    """
+    x, y, z = center
+    l, w, h = dimensions
+    yaw_rad = np.radians(yaw)
+
+    # 计算角点
+    corners = np.array([
+        [l / 2, w / 2, h / 2],
+        [-l / 2, w / 2, h / 2],
+        [-l / 2, -w / 2, h / 2],
+        [l / 2, -w / 2, h / 2],
+        [l / 2, w / 2, -h / 2],
+        [-l / 2, w / 2, -h / 2],
+        [-l / 2, -w / 2, -h / 2],
+        [l / 2, -w / 2, -h / 2]
+    ])
+
+    # 旋转矩阵
+    R = np.array([
+        [np.cos(yaw_rad), -np.sin(yaw_rad), 0],
+        [np.sin(yaw_rad), np.cos(yaw_rad), 0],
+        [0, 0, 1]
+    ])
+
+    rotated_corners = np.dot(corners, R.T)
+    rotated_corners += np.array(center)
+
+    return rotated_corners
+
+
+def compute_iou_3d(box1, box2):
+    """
+    计算两个三维框的 IoU (Intersection over Union)。
+    """
+    center1, dimensions1, yaw1 = box1[:3], box1[3:6], box1[6]
+    center2, dimensions2, yaw2 = box2[:3], box2[3:6], box2[6]
+
+    # 获取每个框的角点
+    corners1 = box_to_corners(center1, dimensions1, yaw1)
+    corners2 = box_to_corners(center2, dimensions2, yaw2)
+
+    # 计算交集体积的简化方法
+    def intersect_volume(corners1, corners2):
+        """
+        使用包围盒的简单方法计算体积交集
+        """
+        def overlap(a, b):
+            """计算两个区间的重叠长度"""
+            return max(0, min(a[1], b[1]) - max(a[0], b[0]))
+
+        # 计算包围盒的边界
+        def bounding_box(corners):
+            min_corner = np.min(corners, axis=0)
+            max_corner = np.max(corners, axis=0)
+            return min_corner, max_corner
+
+        min1, max1 = bounding_box(corners1)
+        min2, max2 = bounding_box(corners2)
+
+        # 计算交集体积
+        dx = overlap([min1[0], max1[0]], [min2[0], max2[0]])
+        dy = overlap([min1[1], max1[1]], [min2[1], max2[1]])
+        dz = overlap([min1[2], max1[2]], [min2[2], max2[2]])
+
+        return dx * dy * dz
+
+    volume1 = np.prod(dimensions1)
+    volume2 = np.prod(dimensions2)
+    inter_volume = intersect_volume(corners1, corners2)
+    union_volume = volume1 + volume2 - inter_volume
+
+    return inter_volume / union_volume if union_volume > 0 else 0
+
+
+def compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5):
+    """
+    计算文件夹中所有三维框的 Precision 和 Recall
+    gt_folder: Ground Truth 框文件夹
+    pred_folder: 预测框文件夹
+    iou_threshold: IoU 阈值，决定 True Positive 的标准
+    """
+    tp, fp, fn = 0, 0, 0  # 初始化 True Positive, False Positive, False Negative
+
+    # 获取文件夹中所有的文件名
+    gt_files = os.listdir(gt_folder)
+    pred_files = os.listdir(pred_folder)
+    # 确保文件数量一致
+    assert len(gt_files) == len(pred_files), "Ground Truth 和预测框文件数量不一致！"
+
+    for gt_file, pred_file in tqdm(zip(gt_files, pred_files)):
+        # 加载 npy 文件中的 3D 框
+        gt_boxes = np.load(os.path.join(gt_folder, gt_file))  # N x 7 的数组
+        pred_boxes = np.load(os.path.join(pred_folder, pred_file))  # M x 7 的数组
+        # print(gt_boxes.shape, pred_boxes.shape)
+        # 标记哪些 Ground Truth 框已经匹配上
+        matched_gt = np.zeros(len(gt_boxes), dtype=bool)
+
+        # 遍历预测框，计算 IoU 并统计 True Positive, False Positive
+        for pred_box in pred_boxes:
+            best_iou = 0
+            best_gt_idx = -1
+
+            # 找到 IoU 最大的 Ground Truth 框
+            for i, gt_box in enumerate(gt_boxes):
+                if matched_gt[i]:
+                    continue
+                current_iou = compute_iou_3d(pred_box, gt_box)
+                # print(current_iou)
+                if current_iou > best_iou:
+                    best_iou = current_iou
+                    best_gt_idx = i
+
+            # 根据 IoU 阈值判断是 TP 还是 FP
+            # print(best_iou)
+            if best_iou >= iou_threshold:
+                tp += 1
+                matched_gt[best_gt_idx] = True
+            else:
+                fp += 1
+
+        # 统计 False Negative
+        fn += len(gt_boxes) - np.sum(matched_gt)
+
+    # 计算 Precision 和 Recall
+    precision = tp / (tp + fp) if tp + fp > 0 else 0
+    recall = tp / (tp + fn) if tp + fn > 0 else 0
+
+    return precision, recall
 
 
 if __name__ == '__main__':
+
+    # 文件夹路径
+    gt_folder = 'E:/OPV2V/gt_box_one_scenario'  # Ground Truth 框文件夹路径
+    pred_folder = 'E:/OPV2V/out_v7'  # 预测框文件夹路径
+
+    # 计算 Precision 和 Recall
+    precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5)
+
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    exit()
 
     vi = Viewer()
 
     path = "E:\\OPV2V\\train"
 
     # print(os.listdir(path))
-    scenario_folders = sorted([os.path.join(path, x)    # 单个元素的例：.../OPV2V/train/2021_08_16_22_26_54，为一个场景
-                                   for x in os.listdir(path) if
-                                   os.path.isdir(os.path.join(path, x))])
+    scenario_folders = sorted([os.path.join(path, x)  # 单个元素的例：.../OPV2V/train/2021_08_16_22_26_54，为一个场景
+                               for x in os.listdir(path) if
+                               os.path.isdir(os.path.join(path, x))])
     count = 0
     node_timestamp = 0
     for scenario_folder in tqdm(scenario_folders):
         cav_list = sorted([x for x in os.listdir(scenario_folder)  # scenario_folder下每个文件夹都代表一辆车，如641，650，659；单个元素例：641
-                            if os.path.isdir(
-                            os.path.join(scenario_folder, x))])
+                           if os.path.isdir(
+                os.path.join(scenario_folder, x))])
         for cav_id in cav_list:
             cav_path = os.path.join(scenario_folder, cav_id)
             yaml_files = \
-                    sorted([os.path.join(cav_path, x)   # 例：将...\OPV2V\train\2021_08_16_22_26_54\641下'000069.yaml'这样的文件路径升序排序
-                            for x in os.listdir(cav_path) if
-                            x.endswith('.yaml') and 'additional' not in x])
+                sorted([os.path.join(cav_path, x)  # 例：将...\OPV2V\train\2021_08_16_22_26_54\641下'000069.yaml'这样的文件路径升序排序
+                        for x in os.listdir(cav_path) if
+                        x.endswith('.yaml') and 'additional' not in x])
             break
         timestamps = []
         for file in yaml_files:
             res = file.split(os.path.sep)[-1]
-            timestamp = res.replace('.yaml', '')    # 如'000069.yaml'变成'000069'
+            timestamp = res.replace('.yaml', '')  # 如'000069.yaml'变成'000069'
             timestamps.append(timestamp)
         node_timestamp = node_timestamp + len(timestamps)
 
-##################################################################################
+        ##################################################################################
         # multi_agent_point = []
         # poses = []
         # for cav_id in cav_list:
@@ -446,8 +607,9 @@ if __name__ == '__main__':
         for num_timestamp in tqdm(range(node_timestamp - len(timestamps), node_timestamp)):
             # if count < 2:
             #     continue
-            pseduo_labels = np.load(f'E:\\OPV2V\\pre_box\\pre_{num_timestamp}.npy')
-            gt = np.load(f'E:\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')  # n*7
+            # pseduo_labels = np.load(f'E:\\OPV2V\\pre_box\\pre_{num_timestamp}.npy')
+            pseduo_labels = np.load(f'E:\\OPV2V\\out_v6\\out_pseduo_labels_v6_{num_timestamp}.npy')
+            gt = np.load(f'E:\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')  # n*7 [x,y,z,l,w,h,yaw]
             # exit()
             # pseduo_labels = gt.copy()
             pseduo_labels_ = pseduo_labels.copy()
@@ -464,24 +626,24 @@ if __name__ == '__main__':
             pseduo_labels[:, :3] = box_center_new[:, :3]
             pseduo_labels[:, 6] = pseduo_labels[:, 6] + dif_ang
 
-            if num_timestamp - (node_timestamp-len(timestamps)) > 25:
-                a = num_timestamp -25
+            if num_timestamp - (node_timestamp - len(timestamps)) > 25:
+                a = num_timestamp - 25
             else:
-                a = node_timestamp-len(timestamps)
+                a = node_timestamp - len(timestamps)
 
             if node_timestamp - num_timestamp > 25:
                 b = num_timestamp + 25
             else:
                 b = node_timestamp
 
-            key = num_timestamp - a #表达当前帧在传入序列中的相对位置
+            key = num_timestamp - a  # 表达当前帧在传入序列中的相对位置
 
             # ok_0 = np.array(poses[0][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3)  # 自车位置
             ok = []
             mask = [False] * pseduo_labels.shape[0]
             mask_support = [False] * pseduo_labels.shape[0]
             dense_points_multi_frame = []
-            for frame in range(a-node_timestamp+len(timestamps), b-node_timestamp+len(timestamps)):
+            for frame in range(a - node_timestamp + len(timestamps), b - node_timestamp + len(timestamps)):
                 dense_points = 0
                 for m in range(len(cav_list)):
                     if m == 0:
@@ -493,12 +655,25 @@ if __name__ == '__main__':
             for m in range(len(cav_list)):
                 ok.append(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3))
 
-            out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key, ok)
+            out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key,
+                                                                         ok)
 
             # inverted_list = [not x for x in out_pseduo_labels]
 
-            np.save(f'E:\\OPV2V\\out_v4\\out_pseduo_labels_v4_{num_timestamp}.npy',
+            np.save(f'E:\\OPV2V\\out_v7\\out_pseduo_labels_v7_{num_timestamp}.npy',
                     pseduo_labels_[out_pseduo_labels])
+
+            # # 匹配gt和预测框
+            # # 加载npy文件
+            # gt_boxes = np.load('gt_boxes.npy')  # Ground Truth 框
+            # pred_boxes = np.load('pred_boxes.npy')  # 预测框
+            #
+            # # 计算precision和recall
+            # precision, recall = compute_precision_recall(gt_boxes, pred_boxes)
+            #
+            # print(f"Precision: {precision:.4f}")
+            # print(f"Recall: {recall:.4f}")
+
             # np.save(f'E:\\OPV2V\\out_v4\\out_pseduo_labels_noise_v4_{num_timestamp}.npy',
             #         pseduo_labels_[inverted_list])
             # np.save(f'F:\\OPV2V\\OPV2V\\out_v3\\out_pseduo_labels_v3_{num_timestamp}.npy', pseduo_labels_[mask])
@@ -514,12 +689,16 @@ if __name__ == '__main__':
             #
             # for m in range(len(cav_list)):
             #     vi.add_points(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3), radius=10, color='red')
+            # pose_center = [0, 0, 0]
+            # for cav in range(len(ok)):
+            #     pose_center = ok[cav][0, :] + pose_center
+            # pose_center = pose_center / len(ok)
+            # vi.add_points(pose_center[:3].reshape(1, 3), radius=15, color='red')
             # vi.add_points(dense_points_multi_frame[key][:, :3])
             # vi.add_3D_boxes(gt, color='green')
-            # # vi.add_3D_boxes(pseduo_labels, color='black')
+            # vi.add_3D_boxes(pseduo_labels, color='black')
             # vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
             # vi.show_3D()
-
+        print("单个场景生成伪标签")
+        exit()
         count += 1
-
-
