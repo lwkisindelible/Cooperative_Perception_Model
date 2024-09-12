@@ -29,6 +29,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
     This class is for intermediate fusion where each vehicle transmit the
     deep features to ego.
     """
+
     def __init__(self, params, visualize, train=True):
         super(IntermediateFusionDataset, self). \
             __init__(params, visualize, train)
@@ -38,13 +39,13 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         # projected instead.
         self.proj_first = True
         if 'proj_first' in params['fusion']['args'] and \
-            not params['fusion']['args']['proj_first']:
+                not params['fusion']['args']['proj_first']:
             self.proj_first = False
 
         # whether there is a time delay between the time that cav project
         # lidar to ego and the ego receive the delivered feature
         self.cur_ego_pose_flag = True if 'cur_ego_pose_flag' not in \
-            params['fusion']['args'] else \
+                                         params['fusion']['args'] else \
             params['fusion']['args']['cur_ego_pose_flag']
 
         self.pre_processor = build_preprocessor(params['preprocess'],
@@ -54,6 +55,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             train)
 
     def __getitem__(self, idx):
+        # idx = 66
         base_data_dict = self.retrieve_base_data(idx,
                                                  cur_ego_pose_flag=self.cur_ego_pose_flag)
 
@@ -89,10 +91,16 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         infra = []
         spatial_correction_matrix = []
 
-        if self.visualize:
+        # if self.visualize:
+        keys = 0
+        if keys == 0:
             projected_lidar_stack = []
 
         # loop over all CAVs to process information
+        all_cav_id = []
+        for cav_id, selected_cav_base in base_data_dict.items():
+            all_cav_id.append(cav_id)
+
         for cav_id, selected_cav_base in base_data_dict.items():
             # check if the cav is within the communication range with ego
             distance = \
@@ -106,7 +114,9 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
 
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
-                ego_lidar_pose)
+                ego_lidar_pose,
+                all_cav_id,
+                cav_id)
 
             object_stack.append(selected_cav_processed['object_bbx_center'])
             object_id_stack += selected_cav_processed['object_ids']
@@ -125,7 +135,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                 selected_cav_base['params']['spatial_correction_matrix'])
             infra.append(1 if int(cav_id) < 0 else 0)
 
-            if self.visualize:
+            if keys == 0:
                 projected_lidar_stack.append(
                     selected_cav_processed['projected_lidar'])
 
@@ -134,21 +144,27 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             [object_id_stack.index(x) for x in set(object_id_stack)]
         object_stack = np.vstack(object_stack)
         object_stack = object_stack[unique_indices]
-        # print("object_stack: ", object_stack)
-        object_stack = np.load(f'OpenCOOD/out_v4/out_pseduo_labels_v4_{idx}.npy')
-        for arr in object_stack:
-            t = arr[3]
-            arr[3] = arr[5].copy()
-            arr[5] = t
 
-        # make sure bounding boxes across all frames have the same number
-        object_bbx_center = \
-            np.zeros((self.params['postprocess']['max_num'], 7))
+        if self.train:
+            # if 1==0:
+            # xqm intermediate_fusion_dataset.py 160hang 7gaicheng8
+            object_stack = np.load(f'/data/xqm/mag/OpenCOOD/opencood/out_v2/out_pseduo_labels_v2_{idx}.npy')
+            for arr in object_stack:
+                t = arr[3]
+                arr[3] = arr[5].copy()
+                arr[5] = t
+
+            # make sure bounding boxes across all frames have the same number
+            object_bbx_center = \
+                np.zeros((self.params['postprocess']['max_num'], object_stack.shape[1]))  # xqm 7/8
+        else:
+            object_bbx_center = \
+                np.zeros((self.params['postprocess']['max_num'], 7))  # xqm 7/8
+
         mask = np.zeros(self.params['postprocess']['max_num'])
         object_bbx_center[:object_stack.shape[0], :] = object_stack
         mask[:object_stack.shape[0]] = 1
-        # print("object_bbx_center: ", object_bbx_center)
-        # exit()
+
         # merge preprocessed features from different cavs into the same dict
         cav_num = len(processed_features)
         merged_feature_dict = self.merge_features_to_dict(processed_features)
@@ -168,10 +184,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
         infra = infra + (self.max_cav - len(infra)) * [0.]
         spatial_correction_matrix = np.stack(spatial_correction_matrix)
-        padding_eye = np.tile(np.eye(4)[None],(self.max_cav - len(
-                                               spatial_correction_matrix),1,1))
+        padding_eye = np.tile(np.eye(4)[None], (self.max_cav - len(
+            spatial_correction_matrix), 1, 1))
         spatial_correction_matrix = np.concatenate([spatial_correction_matrix,
-                                                   padding_eye], axis=0)
+                                                    padding_eye], axis=0)
 
         processed_data_dict['ego'].update(
             {'object_bbx_center': object_bbx_center,
@@ -187,13 +203,24 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
              'spatial_correction_matrix': spatial_correction_matrix,
              'pairwise_t_matrix': pairwise_t_matrix})
 
-        if self.visualize:
+        if keys == 0:
             processed_data_dict['ego'].update({'origin_lidar':
                 np.vstack(
                     projected_lidar_stack)})
+
+        # np.save('box.npy', processed_data_dict['ego']['object_bbx_center'])
+        # np.save('points.npy', processed_data_dict['ego']['origin_lidar'])
+        # exit()
+
+        # 部分场景只有一个智能体
+        # if processed_data_dict['ego']['object_bbx_center'][0, 1] == 0.:
+        #     print('dange', idx)
+        #     # np.save('box.npy', processed_data_dict['ego']['object_bbx_center'])
+        #     np.save('points.npy', processed_data_dict['ego']['origin_lidar'])
+
         return processed_data_dict
 
-    def get_item_single_car(self, selected_cav_base, ego_pose):
+    def get_item_single_car(self, selected_cav_base, ego_pose, all_selected_cav_id, cav_id):
         """
         Project the lidar and bbx to ego space first, and then do clipping.
 
@@ -216,9 +243,15 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             selected_cav_base['params']['transformation_matrix']
 
         # retrieve objects under ego coordinates
+        # object_bbx_center, object_bbx_mask, object_ids = \
+        #     self.post_processor.generate_object_center_lable_free([selected_cav_base],
+        #                                                ego_pose,
+        #                                                all_selected_cav_id)
+
         object_bbx_center, object_bbx_mask, object_ids = \
             self.post_processor.generate_object_center([selected_cav_base],
-                                                       ego_pose)
+                                                       ego_pose,
+                                                       all_selected_cav_id)
 
         # filter lidar
         lidar_np = selected_cav_base['lidar_np']
@@ -233,6 +266,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         lidar_np = mask_points_by_range(lidar_np,
                                         self.params['preprocess'][
                                             'cav_lidar_range'])
+        # np.save(f'lidar_np_{cav_id}.npy', lidar_np) #按照car_ID存储点云，在循环外存储包围框信息。
         processed_lidar = self.pre_processor.preprocess(lidar_np)
 
         # velocity
@@ -346,7 +380,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         infra = torch.from_numpy(np.array(infra))
         spatial_correction_matrix_list = \
             torch.from_numpy(np.array(spatial_correction_matrix_list))
-        # (B, max_cav, 3)  vti都是列表，根据dim=-1拼接，最后一维变成了3,有多个[v,t,i]这样的组合。
+        # (B, max_cav, 3)
         prior_encoding = \
             torch.stack([velocity, time_delay, infra], dim=-1).float()
         # (B, max_cav)

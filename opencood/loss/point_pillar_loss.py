@@ -91,6 +91,8 @@ class PointPillarLoss(nn.Module):
         rm = output_dict['rm']
         psm = output_dict['psm']
         targets = target_dict['targets']
+        targets_score = target_dict['targets_score']
+
 
         cls_preds = psm.permute(0, 2, 3, 1).contiguous()
 
@@ -128,13 +130,17 @@ class PointPillarLoss(nn.Module):
         rm = rm.permute(0, 2, 3, 1).contiguous()
         rm = rm.view(rm.size(0), -1, 7)
         targets = targets.view(targets.size(0), -1, 7)
+        targets_score = targets_score.view(targets_score.size(0), -1, 1)
+
         box_preds_sin, reg_targets_sin = self.add_sin_difference(rm,
                                                                  targets)
         loc_loss_src =\
             self.reg_loss_func(box_preds_sin,
                                reg_targets_sin,
                                weights=reg_weights)
-        reg_loss = loc_loss_src.sum() / rm.shape[0]
+        loc_loss_src_with_score = loc_loss_src * targets_score
+
+        reg_loss = loc_loss_src_with_score.sum() / rm.shape[0]
         reg_loss *= self.reg_coe
 
         total_loss = reg_loss + conf_loss

@@ -191,7 +191,6 @@ def boxes_to_corners_3d(boxes3d, order):
     return corners3d.numpy() if is_numpy else corners3d
 
 
-
 def box3d_to_2d(box3d):
     """
     Convert 3D bounding box to 2D.
@@ -436,7 +435,8 @@ def project_world_objects(object_dict,
                           output_dict,
                           lidar_pose,
                           lidar_range,
-                          order):
+                          order,
+                          all_selected_cav_id):
     """
     Project the objects under world coordinates into another coordinate
     based on the provided extrinsic.
@@ -485,6 +485,76 @@ def project_world_objects(object_dict,
 
         if bbx_lidar.shape[0] > 0:
             output_dict.update({object_id: bbx_lidar})
+            # xqm
+            # output_dict.update({object_id: bbx_lidar})
+
+        # if str(object_id) in all_selected_cav_id:
+        #     print('################debug##################', object_id, all_selected_cav_id)
+        #     exit()
+
+
+def project_world_objects_lable_free(object_dict,
+                                     output_dict,
+                                     lidar_pose,
+                                     lidar_range,
+                                     order,
+                                     all_selected_cav_id):
+    """
+    Project the objects under world coordinates into another coordinate
+    based on the provided extrinsic.
+
+    Parameters
+    ----------
+    object_dict : dict
+        The dictionary contains all objects surrounding a certain cav.
+
+    output_dict : dict
+        key: object id, value: object bbx (xyzlwhyaw).
+
+    lidar_pose : list
+        (6, ), lidar pose under world coordinate, [x, y, z, roll, yaw, pitch].
+
+    lidar_range : list
+         [minx, miny, minz, maxx, maxy, maxz]
+
+    order : str
+        'lwh' or 'hwl'
+    """
+    for object_id, object_content in object_dict.items():
+        location = object_content['location']
+        rotation = object_content['angle']
+        center = object_content['center']
+        extent = object_content['extent']
+
+        object_pose = [location[0] + center[0],
+                       location[1] + center[1],
+                       location[2] + center[2],
+                       rotation[0], rotation[1], rotation[2]]
+        object2lidar = x1_to_x2(object_pose, lidar_pose)
+
+        # shape (3, 8)
+        bbx = create_bbx(extent).T
+        # bounding box under ego coordinate shape (4, 8)
+        bbx = np.r_[bbx, [np.ones(bbx.shape[1])]]
+
+        # project the 8 corners to world coordinate
+        bbx_lidar = np.dot(object2lidar, bbx).T
+        bbx_lidar = np.expand_dims(bbx_lidar[:, :3], 0)
+        bbx_lidar = corner_to_center(bbx_lidar, order=order)
+        bbx_lidar = mask_boxes_outside_range_numpy(bbx_lidar,
+                                                   lidar_range,
+                                                   order)
+
+        if bbx_lidar.shape[0] > 0:
+            # if str(object_id) in all_selected_cav_id:
+            #     output_dict.update({object_id: bbx_lidar})
+            # xqm
+            output_dict.update({object_id: bbx_lidar})
+            # print('############', bbx_lidar[:, 3:6])
+
+        # if str(object_id) in all_selected_cav_id:
+        #     print('################debug##################', object_id, all_selected_cav_id)
+        #     exit()
 
 
 def get_points_in_rotated_box(p, box_corner):

@@ -109,8 +109,9 @@ class VoxelPostprocessor(BasePostprocessor):
         # (H, W, 2)
         pos_equal_one = np.zeros((*feature_map_shape, self.anchor_num))
         neg_equal_one = np.zeros((*feature_map_shape, self.anchor_num))
-        # (H, W, self.anchor_num * 7)
+        # (H, W, self.anchor_num * 8)
         targets = np.zeros((*feature_map_shape, self.anchor_num * 7))
+        targets_score = np.zeros((*feature_map_shape, self.anchor_num))
 
         # (n, 7)
         gt_box_center_valid = gt_box_center[masks == 1]
@@ -182,6 +183,14 @@ class VoxelPostprocessor(BasePostprocessor):
         targets[index_x, index_y, np.array(index_z) * 7 + 6] = (
                 gt_box_center[id_pos_gt, 6] - anchors[id_pos, 6])
 
+        if self.train:
+            try:
+                targets_score[index_x, index_y, np.array(index_z)] = \
+                    (gt_box_center[id_pos_gt, 7])
+            except:
+                targets_score[index_x, index_y, np.array(index_z)] = (gt_box_center[id_pos_gt, 6]) * 0 + 1
+
+
         index_x, index_y, index_z = np.unravel_index(
             id_neg, (*feature_map_shape, self.anchor_num))
         neg_equal_one[index_x, index_y, index_z] = 1
@@ -193,7 +202,8 @@ class VoxelPostprocessor(BasePostprocessor):
 
         label_dict = {'pos_equal_one': pos_equal_one,
                       'neg_equal_one': neg_equal_one,
-                      'targets': targets}
+                      'targets': targets,
+                      'targets_score': targets_score}
 
         return label_dict
 
@@ -216,11 +226,13 @@ class VoxelPostprocessor(BasePostprocessor):
         pos_equal_one = []
         neg_equal_one = []
         targets = []
+        targets_score = []
 
         for i in range(len(label_batch_list)):
             pos_equal_one.append(label_batch_list[i]['pos_equal_one'])
             neg_equal_one.append(label_batch_list[i]['neg_equal_one'])
             targets.append(label_batch_list[i]['targets'])
+            targets_score.append(label_batch_list[i]['targets_score'])
 
         pos_equal_one = \
             torch.from_numpy(np.array(pos_equal_one))
@@ -228,10 +240,13 @@ class VoxelPostprocessor(BasePostprocessor):
             torch.from_numpy(np.array(neg_equal_one))
         targets = \
             torch.from_numpy(np.array(targets))
+        targets_score = \
+            torch.from_numpy(np.array(targets_score))
 
         return {'targets': targets,
                 'pos_equal_one': pos_equal_one,
-                'neg_equal_one': neg_equal_one}
+                'neg_equal_one': neg_equal_one,
+                'targets_score': targets_score}
 
     def post_process(self, data_dict, output_dict):
         """
