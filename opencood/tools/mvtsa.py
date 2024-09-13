@@ -231,14 +231,14 @@ def box_filter_v2(pseduo_labels, multi_frame_points, key, ok):
             inter_points_number.append(inter_points.shape[0])
 
         state = classify_state(inter_points_number, key, inter_points_threshold)
-        # print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
+        print('################', inter_points_number, state, inter_points_threshold, disance_with_ok, r)
         # # data.append([state, inter_points_threshold, inter_points_number])
         # # # #
-        # vi.add_points(multi_frame_points[key][:, :3])
-        # vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
-        # vi.add_3D_boxes(gt, color='green')
-        # vi.add_3D_boxes(pseduo_labels[j].reshape(1, 7), color='red')
-        # vi.show_3D()
+        vi.add_points(multi_frame_points[key][:, :3])
+        vi.add_points(pose_center[:3].reshape(1, 3), radius=10, color='red')
+        vi.add_3D_boxes(gt, color='green')
+        vi.add_3D_boxes(pseduo_labels[j].reshape(1, 7), color='red')
+        vi.show_3D()
 
         # print(inter_points_number, inter_points_number[key], len(inter_points_number), state)
 
