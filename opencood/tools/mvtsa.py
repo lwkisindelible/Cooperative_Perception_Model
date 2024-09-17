@@ -471,8 +471,11 @@ def compute_iou_3d(box1, box2):
 
     return inter_volume / union_volume if union_volume > 0 else 0
 
+
 from Viewer.viewer.viewer import Viewer
 import numpy as np
+
+
 def compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5):
     """
     计算文件夹中所有三维框的 Precision 和 Recall
@@ -482,19 +485,25 @@ def compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5):
     """
     tp, fp, fn = 0, 0, 0  # 初始化 True Positive, False Positive, False Negative
 
+    # pre_box = sorted(os.listdir("E:\\OPV2V\\pre_box"))
     # 获取文件夹中所有的文件名
-    gt_files = os.listdir(gt_folder)
-    pred_files = os.listdir(pred_folder)
+    gt_files = sorted(os.listdir(gt_folder))
+    pred_files_ = os.listdir(pred_folder)
+    pred_files = [s for s in pred_files_ if 'noise' not in s]
+    pred_files = sorted(pred_files)
     # 确保文件数量一致
     assert len(gt_files) == len(pred_files), "Ground Truth 和预测框文件数量不一致！"
 
-    for gt_file, pred_file in tqdm(zip(gt_files, pred_files)):
+    for gt_file, pred_file in tqdm(zip(gt_files, pred_files)): # , pre_box
         # 加载 npy 文件中的 3D 框
         gt_boxes = np.load(os.path.join(gt_folder, gt_file))  # N x 7 的数组
         pred_boxes = np.load(os.path.join(pred_folder, pred_file))  # M x 7 的数组
-
+        # pre_boxes = np.load(os.path.join("E:\\OPV2V\\pre_box", pre_file))
+        # print(gt_file, pred_file, pre_file)
+        # vi.add_3D_boxes(pre_boxes, color='black')
         # vi.add_3D_boxes(gt_boxes, color='red')
         # vi.add_3D_boxes(pred_boxes, color='blue')
+        # vi.show_3D()
         # for arr in pred_boxes:
         #     t = arr[3]
         #     arr[3] = arr[5].copy()
@@ -538,12 +547,13 @@ def compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5):
 
 if __name__ == '__main__':
 
+    # vi = Viewer()
     # 文件夹路径
     # gt_folder = 'E:/OPV2V/gt_box'  # Ground Truth 框文件夹路径
-    # pred_folder = "E:\\OPV2V\\out_v2"  # 预测框文件夹路径
+    # pred_folder = "E:\\OPV2V\\out_final"  # 预测框文件夹路径
     #
     # # 计算 Precision 和 Recall
-    # precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5)
+    # precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.1)
     #
     # print(f"Precision: {precision:.4f}")
     # print(f"Recall: {recall:.4f}")
@@ -663,13 +673,13 @@ if __name__ == '__main__':
             for m in range(len(cav_list)):
                 ok.append(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3))
 
-            out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key,
-                                                                         ok)
+            # out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key,
+            #                                                              ok)
 
             # inverted_list = [not x for x in out_pseduo_labels]
 
-            np.save(f'E:\\OPV2V\\out_new_v4\\out_pseduo_labels_v4_{num_timestamp}.npy',
-                    pseduo_labels_[out_pseduo_labels])
+            # np.save(f'E:\\OPV2V\\out_new_v4\\out_pseduo_labels_v4_{num_timestamp}.npy',
+            #         pseduo_labels_[out_pseduo_labels])
 
             # # 匹配gt和预测框
 
@@ -688,16 +698,16 @@ if __name__ == '__main__':
             #
             # for m in range(len(cav_list)):
             #     vi.add_points(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3), radius=10, color='red')
-            # pose_center = [0, 0, 0]
-            # for cav in range(len(ok)):
-            #     pose_center = ok[cav][0, :] + pose_center
-            # pose_center = pose_center / len(ok)
-            # vi.add_points(pose_center[:3].reshape(1, 3), radius=15, color='red')
-            # vi.add_points(dense_points_multi_frame[key][:, :3])
-            # vi.add_3D_boxes(gt, color='green')
-            # vi.add_3D_boxes(pseduo_labels, color='black')
+            pose_center = [0, 0, 0]
+            for cav in range(len(ok)):
+                pose_center = ok[cav][0, :] + pose_center
+            pose_center = pose_center / len(ok)
+            vi.add_points(pose_center[:3].reshape(1, 3), radius=15, color='red')
+            vi.add_points(dense_points_multi_frame[key][:, :3])
+            vi.add_3D_boxes(gt, color='green')
+            vi.add_3D_boxes(pseduo_labels, color='black')
             # vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
-            # vi.show_3D()
+            vi.show_3D()
         # print("单个场景生成伪标签")
         # exit()
         count += 1
