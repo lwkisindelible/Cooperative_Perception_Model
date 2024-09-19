@@ -549,15 +549,15 @@ if __name__ == '__main__':
 
     # vi = Viewer()
     # 文件夹路径
-    # gt_folder = 'E:/OPV2V/gt_box'  # Ground Truth 框文件夹路径
-    # pred_folder = "E:\\OPV2V\\out_final"  # 预测框文件夹路径
-    #
-    # # 计算 Precision 和 Recall
-    # precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.1)
-    #
-    # print(f"Precision: {precision:.4f}")
-    # print(f"Recall: {recall:.4f}")
-    # exit()
+    gt_folder = 'E:/OPV2V/gt_box'  # Ground Truth 框文件夹路径
+    pred_folder = "E:\\OPV2V\\out_xqm_score"  # 预测框文件夹路径
+
+    # 计算 Precision 和 Recall
+    precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5)
+
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    exit()
 
     vi = Viewer()
 

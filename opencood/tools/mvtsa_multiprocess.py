@@ -114,6 +114,20 @@ def remove_ground_points(point_cloud, max_iterations=100, distance_threshold=0.2
     return non_ground_points
 
 
+def max_consecutive_zeros(lst):
+    max_count = 0  # 初始化最大连续0的数量
+    current_count = 0  # 初始化当前连续0的数量
+
+    for num in lst:
+        if num == 0:
+            current_count += 1  # 如果是0，增加当前计数
+            max_count = max(max_count, current_count)  # 更新最大计数
+        else:
+            current_count = 0  # 如果不是0，重置当前计数
+
+    return max_count
+
+
 def classify_state_v1(inter_points, key):
     if not inter_points:  # 检查inter_points是否为空
         return 0  # 如果为空，返回状态0
@@ -138,6 +152,49 @@ def classify_state(inter_points, key, inter_points_threshold):
         return 0
     threshold = 0.5 * len(inter_points)
     return 1 if num_zeros > 1 else 0
+
+
+def classify_state_v2(inter_points_number_total, key, sorted_indices, distance_total):
+    # 规则一：需要框内点云数量大于零
+    cur_frame_points = 0
+    for car in range(len(inter_points_number_total)):
+        try:
+            cur_frame_points += inter_points_number_total[car][key]
+        except:
+            print(inter_points_number_total, len(inter_points_number_total), car, key, )
+            exit()
+
+    if cur_frame_points == 0:
+        return 0
+    else:
+        True
+
+    # print(inter_points_number_total[sorted_indices[0]][key], distance_total)
+    # 规则二：对于近处物体要求当前帧点云数量大于k，连续出现0
+    result = [sum(elements) for elements in zip(*inter_points_number_total)]
+    if distance_total[sorted_indices[0]] < 20:  # 用单个智能体去判断
+        # print(inter_points_number_total[sorted_indices[0]][key]) #sorted_indices[0]最近的那个智能体是哪个智能体
+        # input()
+        densest = inter_points_number_total[sorted_indices[0]]
+        # print('000000000000000000000000000', densest)
+        if densest[key] < 100:  # k
+            return 0
+        elif max_consecutive_zeros(densest) < 3:
+            return 0
+    elif 20 < distance_total[sorted_indices[0]] < 50:  # 用多个智能体去判断
+        # print('111111111111111111111111111', result)
+        if result[key] < 5:
+            return 0
+        elif max_consecutive_zeros(result) < 5:
+            return 0
+    else:  # 用多个智能体去判断
+        # print('22222222222222222222222222222', result)
+        if result[key] < 5:
+            return 0
+        elif max_consecutive_zeros(result) < 10:
+            return 0
+
+    return 1
 
 
 def box_filter(pseduo_labels, multi_frame_points, key, ok):
@@ -319,6 +376,110 @@ def box_filter_v4(pseduo_labels, multi_frame_points, key, ok):
     return new_boxes
 
 
+def box_filter_v5(pseduo_labels, multi_frame_points, key, ok):
+    if pseduo_labels.ndim != 2 or pseduo_labels.shape[1] < 2:
+        raise ValueError("pseduo_labels must be a 2D array with at least 2 columns")
+
+    num_box = pseduo_labels.shape[0]
+    new_boxes = []
+    # kdtree_points = [KDTree(multi_frame_points[i][:, :2]) for i in range(len(multi_frame_points))]
+
+    for j in range(num_box):
+        # kdtree_points = [KDTree(multi_frame_points[i][:, :2]) for i in range(len(multi_frame_points))]
+        # center_annotion = pseduo_labels[j, :2]
+        # radiu = 2
+
+        # inter_points = []
+        # for i, kdtree in enumerate(kdtree_points):
+        #     indices = kdtree.query_ball_point(center_annotion, radiu)
+        #     proposal_points = multi_frame_points[i][indices]
+        #     points_num = proposal_points.shape[0]
+        #     inter_points.append(points_num)
+
+        inter_points_number = []
+        for i in range(len(multi_frame_points)):
+            inter_mask = in_hull(multi_frame_points[i][:, :3],
+                                 boxes_to_corners_3d(pseduo_labels[j][:7].reshape(-1, 7)).reshape(-1, 3))
+            inter_points = multi_frame_points[i][inter_mask]
+            inter_points_number.append(inter_points.shape[0])
+
+        # print('###############len(inter_points)###############', inter_points)
+        state = classify_state_v1(inter_points_number, key)
+        if state == 1:
+            # new_boxes.append(pseduo_labels[j])
+            new_boxes.append(True)
+        else:
+            new_boxes.append(False)
+
+    # new_boxes_ = np.vstack(new_boxes) if new_boxes else np.array([])
+    # print('###################', new_boxes_.shape)
+
+    return new_boxes
+
+
+def box_filter_v6(pseduo_labels, multi_frame_points, key, ok, begin_frame,
+                  end_frame):  # box_filter_v4(pseduo_labels, multi_frame_points, key, ok, begin_frame, end_frame)
+    if pseduo_labels.ndim != 2 or pseduo_labels.shape[1] < 2:
+        raise ValueError("pseduo_labels must be a 2D array with at least 2 columns")
+
+    num_box = pseduo_labels.shape[0]
+    new_boxes = []
+    # kdtree_points = [KDTree(multi_frame_points[i][:, :2]) for i in range(len(multi_frame_points))]
+
+    for j in range(num_box):
+        # kdtree_points = [KDTree(multi_frame_points[i][:, :2]) for i in range(len(multi_frame_points))]
+        # center_annotion = pseduo_labels[j, :2]
+        # radiu = 2
+
+        # inter_points = []
+        # for i, kdtree in enumerate(kdtree_points):
+        #     indices = kdtree.query_ball_point(center_annotion, radiu)
+        #     proposal_points = multi_frame_points[i][indices]
+        #     points_num = proposal_points.shape[0]
+        #     inter_points.append(points_num)
+
+        distance_total = []
+        for car_ok in range(len(ok)):
+            po = ok[car_ok].reshape(1, 3)
+            distance_total.append(np.linalg.norm(pseduo_labels[j][:2] - po[:, :2]))
+            # vi.add_points(po, color='red', radius= 10)
+
+        sorted_indices = [index for index, value in sorted(enumerate(distance_total), key=lambda x: x[1])]
+        # print(distance_total[sorted_indices[0]])
+
+        inter_points_number_total = []
+        # color_list = ['red', 'blue','green']
+        for car_num in range(len(ok)):
+            inter_points_number = []
+            for i in range(begin_frame, end_frame):
+                inter_mask = in_hull(multi_frame_points[car_num][i][:, :3],
+                                     boxes_to_corners_3d(pseduo_labels[j][:7].reshape(-1, 7)).reshape(-1, 3))
+                inter_points = multi_frame_points[car_num][i][inter_mask]
+                # vi.add_points(inter_points[:, :3], color=color_list[car_num])
+                inter_points_number.append(inter_points.shape[0])
+            inter_points_number_total.append(inter_points_number)
+        # vi.add_3D_boxes(pseduo_labels[j][:7].reshape(-1, 7))
+        # vi.show_3D()
+
+        # print('###############len(inter_points)###############', inter_points)
+        state = classify_state_v2(inter_points_number_total, key, sorted_indices, distance_total)
+        # print('state', state)
+        # if state == 1:
+        #     vi.add_3D_boxes(pseduo_labels[j][:7].reshape(-1, 7))
+        #     vi.add_points(multi_frame_points[sorted_indices[0]][key][:, :3])
+        #     vi.show_3D()
+        if state == 1:
+            # new_boxes.append(pseduo_labels[j])
+            new_boxes.append(True)
+        else:
+            new_boxes.append(False)
+
+    # new_boxes_ = np.vstack(new_boxes) if new_boxes else np.array([])
+    # print('###################', new_boxes_.shape)
+
+    return new_boxes
+
+
 def pcd_to_np(pcd_file):
     """
     Read  pcd and return numpy array.
@@ -447,6 +608,7 @@ def load_yaml(file, opt=None):
 
     return param
 
+
 def return_pl_frome_single_scenario(count, node_timestamp_lsit):
     '''
 
@@ -454,12 +616,13 @@ def return_pl_frome_single_scenario(count, node_timestamp_lsit):
     :param node_timestamp: 该场景的起始帧号
     :return:
     '''
-    path = "E:\\OPV2V\\train"
+    path = 'E:/OPV2V/train'
     scenario_folders = sorted([os.path.join(path, x)  # 单个元素的例：.../OPV2V/train/2021_08_16_22_26_54，为一个场景
                                for x in os.listdir(path) if
                                os.path.isdir(os.path.join(path, x))])
-    cav_list = sorted([x for x in os.listdir(scenario_folders[count])  # scenario_folder下每个文件夹都代表一辆车，如641，650，659；单个元素例：641
-                       if os.path.isdir(
+    cav_list = sorted(
+        [x for x in os.listdir(scenario_folders[count])  # scenario_folder下每个文件夹都代表一辆车，如641，650，659；单个元素例：641
+         if os.path.isdir(
             os.path.join(scenario_folders[count], x))])
     for cav_id in cav_list:
         cav_path = os.path.join(scenario_folders[count], cav_id)
@@ -469,21 +632,26 @@ def return_pl_frome_single_scenario(count, node_timestamp_lsit):
                     x.endswith('.yaml') and 'additional' not in x])
         break
 
-    if count == 0:
-        cur_timestamps = 0
-        node_timestamp = node_timestamp_lsit[count]
-    else:
-        cur_timestamps = node_timestamp_lsit[count-1]
-        node_timestamp= node_timestamp_lsit[count]
+    cur_timestamps = node_timestamp_lsit[count]
+    node_timestamp = node_timestamp_lsit[count + 1]
 
-    multi_agent_point = np.load(f'E:\\OPV2V\\multi_agent_point_remove_ground\\multi_agent_point{count}.npy',
-                                allow_pickle=True)
-    poses = np.load(f'E:\\OPV2V\\multi_agent_point_pose\\multi_agent_point_pose{count}.npy', allow_pickle=True)
+    # print("node_timestamp_lsit: ", node_timestamp_lsit)
+    # print("cur_timestamps: ", cur_timestamps)
+    multi_agent_point = np.load(
+        f'E:/OPV2V/multi_agent_point_remove_ground/multi_agent_point{count}.npy',
+        allow_pickle=True)
+    poses = np.load(f'E:/OPV2V/multi_agent_point_pose/multi_agent_point_pose{count}.npy',
+                    allow_pickle=True)
 
-    for num_timestamp in tqdm(range(cur_timestamps, node_timestamp)): #tqdm(range(node_timestamp-len(timestamps), node_timestamp))
+    for num_timestamp in tqdm(
+            range(cur_timestamps, node_timestamp)):  # tqdm(range(node_timestamp-len(timestamps), node_timestamp))
         # if count == 0:
         #     continue
-        pseduo_labels = np.load(f'E:\\OPV2V\\pre_box\\pre_{num_timestamp}.npy')
+        # file_path =  f'/mnt/32THHD/lwk/datas/OPV2V/out_xqm/out_pseduo_labels_v1_{num_timestamp}.npy'
+        # if os.path.exists(file_path):
+        #     continue
+
+        pseduo_labels = np.load(f'E:/OPV2V/pre_box/pre_{num_timestamp}.npy')
         # gt = np.load(f'F:\\OPV2V\\OPV2V\\gt_box\\gt_{num_timestamp}.npy')
         # pseduo_labels = gt.copy()
         pseduo_labels_ = pseduo_labels.copy()
@@ -500,41 +668,35 @@ def return_pl_frome_single_scenario(count, node_timestamp_lsit):
         pseduo_labels[:, :3] = box_center_new[:, :3]
         pseduo_labels[:, 6] = pseduo_labels[:, 6] + dif_ang
 
-        if num_timestamp - cur_timestamps > 25:
-            a = num_timestamp - 25
+        if num_timestamp - cur_timestamps > 20:
+            a = num_timestamp - 20
+            b = a + 40
         else:
             a = cur_timestamps
+            b = num_timestamp + 20 + 20 - num_timestamp + cur_timestamps
 
-        if node_timestamp - num_timestamp > 25:
-            b = num_timestamp + 25
-        else:
+        if node_timestamp - num_timestamp < 20:
             b = node_timestamp
+            a = a - (20 - (node_timestamp - num_timestamp))
+
+        assert b - a == 40
 
         key = num_timestamp - a  # 表达当前帧在传入序列中的相对位置
 
         ok = []
-        dense_points_multi_frame = []
-        for frame in range(a - cur_timestamps, b - cur_timestamps):
-            dense_points = 0
-            for m in range(len(cav_list)):
-                if m == 0:
-                    dense_points = multi_agent_point[m][frame]
-                else:
-                    dense_points = np.concatenate((dense_points, multi_agent_point[m][frame]), 0)
-            dense_points_multi_frame.append(dense_points)
-
         for m in range(len(cav_list)):
             ok.append(np.array(poses[m][num_timestamp - cur_timestamps])[:3].reshape(1, 3))
 
-        out_pseduo_labels = box_filter_v4(pseduo_labels, dense_points_multi_frame, key,
-                                          ok)
+        begin_frame = a - cur_timestamps
+        end_frame = b - cur_timestamps
+        out_pseduo_labels = box_filter_v6(pseduo_labels, multi_agent_point, key, ok, begin_frame, end_frame)
 
         inverted_list = [not x for x in out_pseduo_labels]
 
-        np.save(f'E:\\OPV2V\\out_v1\\out_pseduo_labels_v1_{num_timestamp}.npy',
+        np.save(f'E:/OPV2V/out_xqm_score/out_pseduo_labels_v1_{num_timestamp}.npy',
                 pseduo_labels_[out_pseduo_labels])
-        # np.save(f'/mnt/32THHD/lwk/datas/OPV2V/out_v1/out_pseduo_labels_noise_v1_{num_timestamp}.npy',
-        #         pseduo_labels_[inverted_list])
+        np.save(f'E:/OPV2V/out_xqm_score/out_pseduo_labels_noise_v1_{num_timestamp}.npy',
+                pseduo_labels_[inverted_list])
     #################################################################################
     #     # clear_points = remove_ground_points(multi_agent_point[m][key][:, :3])
     #     # vi.add_points(clear_points)
@@ -555,11 +717,13 @@ def return_pl_frome_single_scenario(count, node_timestamp_lsit):
     return True
 
 
+import itertools
+
 if __name__ == '__main__':
 
     # vi = Viewer()
 
-    path = "E:\\OPV2V\\train"
+    path = "E:/OPV2V/train"
 
     # print(os.listdir(path))
     scenario_folders = sorted([os.path.join(path, x)  # 单个元素的例：.../OPV2V/train/2021_08_16_22_26_54，为一个场景
@@ -586,13 +750,20 @@ if __name__ == '__main__':
             timestamps.append(timestamp)
         node_timestamp_lsit.append(len(timestamps))
 
-    # return_pl_frome_single_scenario(count, node_timestamp_lsit)
+    node_timestamp_lsit = [0] + node_timestamp_lsit
+    new_list = []
+    current_sum = 0
+
+    for num in range(len(node_timestamp_lsit)):
+        current_sum += node_timestamp_lsit[num]
+        new_list.append(current_sum)
+        # return_pl_frome_single_scenario(count, node_timestamp_lsit)
 
     sample_sequence_file_list = [i for i in range(43)]
 
     process_single_sequence = partial(
         return_pl_frome_single_scenario,
-        node_timestamp_lsit=node_timestamp_lsit,
+        node_timestamp_lsit=new_list,
     )
 
     with multiprocessing.Pool(16) as p:

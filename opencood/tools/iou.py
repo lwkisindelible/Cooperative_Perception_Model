@@ -101,7 +101,7 @@ def process_folders(gt_folder, pred_folder, output_folder, iou_threshold=0.1):
     gt_files = sorted(os.listdir(gt_folder))
     pred_files = sorted(os.listdir(pred_folder))
 
-    for gt_file, pred_file in tqdmzip(gt_files, pred_files):
+    for gt_file, pred_file in tqdm(zip(gt_files, pred_files)):
         gt_boxes = np.load(os.path.join(gt_folder, gt_file))
         pred_boxes = np.load(os.path.join(pred_folder, pred_file))
 
