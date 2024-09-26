@@ -130,9 +130,9 @@ if __name__ == '__main__':
     vi = Viewer()
     gt_folder = 'E:/OPV2V/gt_box'  # Ground Truth 框文件夹路径
     pred_folder = "E:/OPV2V/pre_box"  # 预测框文件夹路径
-    out_folder = "E:/OPV2V/out_final_03"
+    out_folder = "E:/OPV2V/out_final_05"
     # 计算 Precision 和 Recall
     from tqdm import tqdm
     # read(out_folder)
-    process_folders(gt_folder, pred_folder, out_folder, iou_threshold=0.3)
+    process_folders(gt_folder, pred_folder, out_folder, iou_threshold=0.5)
 

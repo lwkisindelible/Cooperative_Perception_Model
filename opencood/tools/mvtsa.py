@@ -549,11 +549,12 @@ if __name__ == '__main__':
 
     # vi = Viewer()
     # 文件夹路径
-    gt_folder = 'E:/OPV2V/gt_box'  # Ground Truth 框文件夹路径
-    pred_folder = "E:\\OPV2V\\out_xqm_score"  # 预测框文件夹路径
+    gt_folder = 'E:/OPV2V/pseduo_label_val/gt_box_test'  # Ground Truth 框文件夹路径
+    pred_folder = "E:\\OPV2V\\pseduo_label_val\\pre_box_test"  # 预测框文件夹路径
+    pre_score_folder = "E:\\OPV2V\\pseduo_label_val\\pre_score_test"
 
     # 计算 Precision 和 Recall
-    precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.5)
+    precision, recall = compute_precision_recall(gt_folder, pred_folder, iou_threshold=0.3)
 
     print(f"Precision: {precision:.4f}")
     print(f"Recall: {recall:.4f}")
@@ -665,13 +666,23 @@ if __name__ == '__main__':
                 dense_points = 0
                 for m in range(len(cav_list)):
                     if m == 0:
-                        dense_points = multi_agent_point[m][frame]
+                        dense_points = multi_agent_point[m][frame]  # (n, 4)每一帧对应不同的n，应该是n个点的意思
+                        # print(multi_agent_point[m][frame], multi_agent_point[m][frame].shape)
+
                     else:
                         dense_points = np.concatenate((dense_points, multi_agent_point[m][frame]), 0)
                 dense_points_multi_frame.append(dense_points)
 
+
             for m in range(len(cav_list)):
                 ok.append(np.array(poses[m][num_timestamp - node_timestamp + len(timestamps)])[:3].reshape(1, 3))
+
+            for m in range(len(cav_list)):
+            #     vi.add_3D_boxes(gt, color='green')
+            #     vi.add_points(multi_agent_point[m][key][:, :3])
+                vi.add_points(ok[m][0, :].reshape(1, 3), radius=10, color='red')
+            #     print(f"{m} agent points")
+            #     vi.show_3D()
 
             # out_pseduo_labels, out_pseduo_labels_support = box_filter_v2(pseduo_labels, dense_points_multi_frame, key,
             #                                                              ok)
@@ -705,7 +716,7 @@ if __name__ == '__main__':
             vi.add_points(pose_center[:3].reshape(1, 3), radius=15, color='red')
             vi.add_points(dense_points_multi_frame[key][:, :3])
             vi.add_3D_boxes(gt, color='green')
-            vi.add_3D_boxes(pseduo_labels, color='black')
+            # vi.add_3D_boxes(pseduo_labels, color='black')
             # vi.add_3D_boxes(pseduo_labels[out_pseduo_labels], color='red')
             vi.show_3D()
         # print("单个场景生成伪标签")

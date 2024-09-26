@@ -163,6 +163,44 @@ def classify_state_v2(inter_points_number_total, key, sorted_indices, distance_t
         except:
             print(inter_points_number_total, len(inter_points_number_total), car, key, )
             exit()
+    if cur_frame_points == 0:
+        return 0
+    else:
+        True
+
+    # 规则二：对于近处物体要求当前帧点云数量大于k，连续出现0
+    result = [sum(elements) for elements in zip(*inter_points_number_total)]
+    if distance_total[sorted_indices[0]] < 20:  # 用单个智能体去判断
+        # sorted_indices[0]最近的那个智能体是哪个智能体
+        densest = inter_points_number_total[sorted_indices[0]]
+        if densest[key] < 100:  # k
+            return 0
+        elif max_consecutive_zeros(densest) < 3:
+            return 0
+    elif 20 < distance_total[sorted_indices[0]] < 50:  # 用多个智能体去判断
+        # print('111111111111111111111111111', result)
+        if result[key] < 5:
+            return 0
+        elif max_consecutive_zeros(result) < 5:
+            return 0
+    else:  # 用多个智能体去判断
+        # print('22222222222222222222222222222', result)
+        if result[key] < 5:
+            return 0
+        elif max_consecutive_zeros(result) < 10:
+            return 0
+
+    return 1
+
+def classify_state_v3(inter_points_number_total, key, sorted_indices, distance_total):
+    # 规则一：需要框内点云数量大于零
+    cur_frame_points = 0
+    for car in range(len(inter_points_number_total)):
+        try:
+            cur_frame_points += inter_points_number_total[car][key]
+        except:
+            print(inter_points_number_total, len(inter_points_number_total), car, key, )
+            exit()
 
     if cur_frame_points == 0:
         return 0
@@ -195,7 +233,6 @@ def classify_state_v2(inter_points_number_total, key, sorted_indices, distance_t
             return 0
 
     return 1
-
 
 def box_filter(pseduo_labels, multi_frame_points, key, ok):
     if pseduo_labels.ndim != 2 or pseduo_labels.shape[1] < 2:
@@ -479,6 +516,41 @@ def box_filter_v6(pseduo_labels, multi_frame_points, key, ok, begin_frame,
 
     return new_boxes
 
+def box_filter_v7(pseduo_labels, multi_frame_points, key, ok, begin_frame,
+                  end_frame):  # box_filter_v4(pseduo_labels, multi_frame_points, key, ok, begin_frame, end_frame)
+    if pseduo_labels.ndim != 2 or pseduo_labels.shape[1] < 2:
+        raise ValueError("pseduo_labels must be a 2D array with at least 2 columns")
+
+    num_box = pseduo_labels.shape[0]
+    new_boxes = []
+
+    for j in range(num_box):
+
+        distance_total = []
+        for car_ok in range(len(ok)):
+            po = ok[car_ok].reshape(1, 3)
+            distance_total.append(np.linalg.norm(pseduo_labels[j][:2] - po[:, :2]))
+            # vi.add_points(po, color='red', radius= 10)
+
+        sorted_indices = [index for index, value in sorted(enumerate(distance_total), key=lambda x: x[1])]
+
+        inter_points_number_total = []
+        for car_num in range(len(ok)):
+            inter_points_number = []
+            for i in range(begin_frame, end_frame):
+                inter_mask = in_hull(multi_frame_points[car_num][i][:, :3],
+                                     boxes_to_corners_3d(pseduo_labels[j][:7].reshape(-1, 7)).reshape(-1, 3))
+                inter_points = multi_frame_points[car_num][i][inter_mask]
+                inter_points_number.append(inter_points.shape[0])
+            inter_points_number_total.append(inter_points_number)
+
+        state = classify_state_v2(inter_points_number_total, key, sorted_indices, distance_total)
+        if state == 1:
+            new_boxes.append(True)
+        else:
+            new_boxes.append(False)
+
+    return new_boxes
 
 def pcd_to_np(pcd_file):
     """
